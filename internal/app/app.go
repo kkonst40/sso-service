@@ -47,32 +47,49 @@ func New(cfg *config.Config) (*App, error) {
 		userHandler = handler.New(userService, cfg)
 	)
 
-	mux := http.NewServeMux()
+	authRouter := http.NewServeMux()
+	noAuthRouter := http.NewServeMux()
 
 	// for test
-	mux.HandleFunc("GET /r", func(w http.ResponseWriter, r *http.Request) {
+	noAuthRouter.HandleFunc("GET /r", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/register.html")
 	})
-	mux.HandleFunc("GET /l", func(w http.ResponseWriter, r *http.Request) {
+	noAuthRouter.HandleFunc("GET /l", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/login.html")
 	})
-	mux.HandleFunc("GET /checkauth", func(w http.ResponseWriter, r *http.Request) {
+	noAuthRouter.HandleFunc("GET /checkauth", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/me.html")
 	})
 
-	mux.HandleFunc("GET /all", userHandler.All)
-	mux.HandleFunc("GET /me", middleware.Auth(userHandler.Me, jwtProvider))
-	mux.HandleFunc("POST /exist", userHandler.Exist)
-	mux.HandleFunc("POST /login", userHandler.Login)
-	mux.HandleFunc("POST /logout", middleware.Auth(userHandler.Logout, jwtProvider))
-	mux.HandleFunc("POST /register", userHandler.Create)
-	mux.HandleFunc("PUT /updatelogin", middleware.Auth(userHandler.UpdateLogin, jwtProvider))
-	mux.HandleFunc("PUT /updatepassword", middleware.Auth(userHandler.UpdatePassword, jwtProvider))
-	mux.HandleFunc("DELETE /{id}", middleware.Auth(userHandler.Delete, jwtProvider))
+	noAuthRouter.HandleFunc("GET /all", userHandler.All)
+	noAuthRouter.HandleFunc("POST /exist", userHandler.Exist)
+	noAuthRouter.HandleFunc("POST /login", userHandler.Login)
+	noAuthRouter.HandleFunc("POST /register", userHandler.Create)
+
+	authRouter.HandleFunc("GET /me", userHandler.Me)
+	authRouter.HandleFunc("POST /logout", userHandler.Logout)
+	authRouter.HandleFunc("PUT /updatelogin", userHandler.UpdateLogin)
+	authRouter.HandleFunc("PUT /updatepassword", userHandler.UpdatePassword)
+	authRouter.HandleFunc("DELETE /{id}", userHandler.Delete)
+
+	noAuthStack := middleware.CreateStack(
+		middleware.Recovery,
+		middleware.Timeout(3*time.Second),
+	)
+
+	authStack := middleware.CreateStack(
+		middleware.Recovery,
+		middleware.Timeout(3*time.Second),
+		middleware.Auth(jwtProvider),
+	)
+
+	mainRouter := http.NewServeMux()
+	mainRouter.Handle("/", noAuthStack(noAuthRouter))
+	mainRouter.Handle("/", authStack(authRouter))
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.HttpPort,
-		Handler: middleware.Timeout(mux, 3*time.Second),
+		Handler: mainRouter,
 	}
 
 	grpcServer := grpc.NewServer()
