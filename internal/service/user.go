@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/isso/internal/apperror"
+	errs "github.com/kkonst40/isso/internal/errors"
 	"github.com/kkonst40/isso/internal/model"
 	"github.com/kkonst40/isso/internal/repo"
 	"github.com/kkonst40/isso/internal/utils"
@@ -44,40 +44,50 @@ func (s *UserService) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, 
 	//if requesterID != s.specialID {
 	//	return false, fmt.Errorf("no permission")
 	//}
-	return s.userRepo.Exist(ctx, IDs)
+	ids, err := s.userRepo.Exist(ctx, IDs)
+	if err != nil {
+		return nil, fmt.Errorf("check users existence: %w", err)
+	}
+
+	return ids, nil
 }
 
 func (s *UserService) Login(ctx context.Context, login, password string) (string, error) {
 	user, err := s.userRepo.GetByLogin(ctx, login)
 	if err != nil {
-		if !errors.Is(err, apperror.ErrInternalDB) {
-			return "", apperror.ErrInvalidCredentials
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return "", errs.ErrInvalidCredentials
 		}
-		return "", err
+		return "", fmt.Errorf("get user by login '%v' to log in: %w", login, err)
 	}
 
 	if !s.pwdHandler.VerifyPwd(password, user.PasswordHash) {
-		return "", apperror.ErrInvalidCredentials
+		return "", errs.ErrInvalidCredentials
 	}
 
-	return s.jwtProvider.Generate(user)
+	token, err := s.jwtProvider.Generate(user)
+	if err != nil {
+		return "", fmt.Errorf("%w: jwt token: %w", errs.ErrGenerating, err)
+	}
+
+	return token, nil
 }
 
 func (s *UserService) Create(ctx context.Context, login, password string) error {
 	if !s.credValidator.ValidateLogin(login) {
-		return apperror.ErrInvalidLogin
+		return errs.ErrInvalidLogin
 	}
 	if !s.credValidator.ValidatePwd(password) {
-		return apperror.ErrInvalidPwd
+		return errs.ErrInvalidPwd
 	}
 
 	userID, err := uuid.NewV7()
 	if err != nil {
-		return fmt.Errorf("%w: user id", apperror.ErrGeneratingError)
+		return fmt.Errorf("%w: user id: %w", errs.ErrGenerating, err)
 	}
 	pwdHash, err := s.pwdHandler.GeneratePwdHash(password)
 	if err != nil {
-		return fmt.Errorf("%w: password hash", apperror.ErrGeneratingError)
+		return fmt.Errorf("%w: password hash: %w", errs.ErrGenerating, err)
 	}
 
 	user := &model.User{
@@ -87,58 +97,78 @@ func (s *UserService) Create(ctx context.Context, login, password string) error 
 		TokenID:      uuid.New(),
 	}
 
-	return s.userRepo.Create(ctx, user)
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		return fmt.Errorf("create user: %w", err)
+	}
+
+	return nil
 }
 
 func (s *UserService) UpdateLogin(ctx context.Context, ID uuid.UUID, newLogin string) error {
 	if !s.credValidator.ValidateLogin(newLogin) {
-		return apperror.ErrInvalidLogin
+		return errs.ErrInvalidLogin
 	}
 
 	user, err := s.userRepo.GetByID(ctx, ID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get user %v to update: %w", ID, err)
 	}
 
 	user.Login = newLogin
 
-	return s.userRepo.Update(ctx, user)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("update user %v: %w", ID, err)
+	}
+
+	return nil
 }
 
 func (s *UserService) UpdatePassword(ctx context.Context, ID uuid.UUID, newPwd string) error {
 	if !s.credValidator.ValidatePwd(newPwd) {
-		return apperror.ErrInvalidPwd
+		return errs.ErrInvalidPwd
 	}
 
 	user, err := s.userRepo.GetByID(ctx, ID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get user %v to update: %w", ID, err)
 	}
 
 	newPwdHash, err := s.pwdHandler.GeneratePwdHash(newPwd)
 	if err != nil {
-		return fmt.Errorf("%w: password hash", apperror.ErrGeneratingError)
+		return fmt.Errorf("%w: password hash: %w", errs.ErrGenerating, err)
 	}
 
 	user.PasswordHash = newPwdHash
 
-	return s.userRepo.Update(ctx, user)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("update user %v: %w", ID, err)
+	}
+
+	return nil
 }
 
 func (s *UserService) Delete(ctx context.Context, ID, requesterID uuid.UUID) error {
 	if requesterID != ID && requesterID != s.specialID {
-		return apperror.ErrNoPermission
+		return errs.ErrForbidden
 	}
 
-	return s.userRepo.Delete(ctx, ID)
+	if err := s.userRepo.Delete(ctx, ID); err != nil {
+		return fmt.Errorf("delete user %v: %w", ID, err)
+	}
+
+	return nil
 }
 
 func (s *UserService) Logout(ctx context.Context, ID uuid.UUID) error {
 	user, err := s.userRepo.GetByID(ctx, ID)
 	if err != nil {
-		return fmt.Errorf("logging out error")
+		return fmt.Errorf("get user %v to log out: %w", ID, err)
 	}
 
 	user.TokenID = uuid.New()
-	return s.userRepo.Update(ctx, user)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("update user %v token ID: %w", ID, err)
+	}
+
+	return nil
 }

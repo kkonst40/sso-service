@@ -8,13 +8,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/kkonst40/isso/internal/apperror"
+	errs "github.com/kkonst40/isso/internal/errors"
 	"github.com/kkonst40/isso/internal/model"
 )
 
 type UserRepo struct {
 	db *sql.DB
 }
+
+const uniqueViolationCode = "23505"
 
 func New(db *sql.DB) *UserRepo {
 	return &UserRepo{
@@ -30,7 +32,7 @@ func (r *UserRepo) GetAll(ctx context.Context) ([]model.User, error) {
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -43,14 +45,14 @@ func (r *UserRepo) GetAll(ctx context.Context) ([]model.User, error) {
 			&user.PasswordHash,
 			&user.TokenID,
 		); err != nil {
-			return nil, fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 		}
 
 		users = append(users, user)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return users, nil
@@ -71,10 +73,10 @@ func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (*model.User, erro
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("%w: ID %s", apperror.ErrUserNotFound, ID)
+		return nil, errs.ErrUserNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return &user, nil
@@ -96,10 +98,10 @@ func (r *UserRepo) GetByLogin(ctx context.Context, login string) (*model.User, e
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("%w: login %s", apperror.ErrUserNotFound, login)
+		return nil, errs.ErrUserNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return &user, nil
@@ -123,14 +125,15 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			// unique violation
-			// error 23505 -> 409 Conflict
-			if pgErr.Code == "23505" {
-				return fmt.Errorf("%w: login '%s' taken", apperror.ErrLoginTaken, user.Login)
+
+			if pgErr.Code == uniqueViolationCode {
+				if pgErr.ConstraintName == "users_login_key" {
+					return fmt.Errorf("%w: login '%s' taken", errs.ErrLoginExists, user.Login)
+				}
 			}
 		}
 
-		return fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil
@@ -146,25 +149,26 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 		WHERE id = $4
 	`
 
-	res, err := r.db.ExecContext(ctx, query, user.Login, user.Login, user.TokenID, user.ID)
+	res, err := r.db.ExecContext(ctx, query, user.Login, user.PasswordHash, user.TokenID, user.ID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			// unique violation
-			if pgErr.Code == "23505" {
-				return fmt.Errorf("%w: login '%s' taken", apperror.ErrLoginTaken, user.Login)
+			if pgErr.Code == uniqueViolationCode {
+				if pgErr.ConstraintName == "users_login_key" {
+					return fmt.Errorf("%w: login '%s' taken", errs.ErrLoginExists, user.Login)
+				}
 			}
 		}
-		return fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("%w: ID %s", apperror.ErrUserNotFound, user.ID)
+		return errs.ErrUserNotFound
 	}
 
 	return nil
@@ -177,7 +181,7 @@ func (r *UserRepo) Delete(ctx context.Context, ID uuid.UUID) error {
 	`
 
 	if _, err := r.db.ExecContext(ctx, query, ID); err != nil {
-		return fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil
@@ -192,7 +196,7 @@ func (r *UserRepo) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, err
 
 	rows, err := r.db.QueryContext(ctx, query, IDs)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -200,14 +204,14 @@ func (r *UserRepo) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, err
 	for rows.Next() {
 		var ID uuid.UUID
 		if err := rows.Scan(&ID); err != nil {
-			return nil, fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 		}
 
 		existIDs = append(existIDs, ID)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", apperror.ErrInternalDB, err)
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return existIDs, nil
