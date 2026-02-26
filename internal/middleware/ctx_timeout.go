@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
-func Timeout(next http.Handler, timeoutDuration time.Duration) http.Handler {
-	return http.TimeoutHandler(next, timeoutDuration, "Internal Server Error (Timeout)")
+func Timeout(d time.Duration) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.TimeoutHandler(next, d, "Timed out")
+	}
 }

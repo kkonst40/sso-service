@@ -1,4 +1,4 @@
-package apperror
+package errors
 
 import (
 	"errors"
@@ -9,14 +9,18 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidPwd         = errors.New("invalid password")
 	ErrInvalidLogin       = errors.New("invalid login")
-	ErrInternalDB         = errors.New("internal db error")
+	ErrDatabase           = errors.New("internal db error")
 	ErrUserNotFound       = errors.New("user not found")
-	ErrLoginTaken         = errors.New("user already exists")
-	ErrNoPermission       = errors.New("no permission")
-	ErrGeneratingError    = errors.New("generating error")
+	ErrLoginExists        = errors.New("user already exists")
+	ErrForbidden          = errors.New("no permission")
+	ErrGenerating         = errors.New("generating error")
 )
 
-func GetMsgCode(err error) (string, int) {
+func MapError(err error) (string, int) {
+	if err == nil {
+		return "", http.StatusOK
+	}
+
 	switch {
 	case errors.Is(err, ErrInvalidCredentials):
 		return "Invalid login or password", http.StatusUnauthorized
@@ -30,16 +34,13 @@ func GetMsgCode(err error) (string, int) {
 	case errors.Is(err, ErrUserNotFound):
 		return "User not found", http.StatusNotFound
 
-	case errors.Is(err, ErrLoginTaken):
+	case errors.Is(err, ErrLoginExists):
 		return "Login already taken", http.StatusConflict
 
-	case errors.Is(err, ErrNoPermission):
+	case errors.Is(err, ErrForbidden):
 		return "User has no permission", http.StatusForbidden
 
 	default:
-		if err != nil {
-			return "Internal server error", http.StatusInternalServerError
-		}
-		return "", http.StatusOK
+		return "Internal server error", http.StatusInternalServerError
 	}
 }

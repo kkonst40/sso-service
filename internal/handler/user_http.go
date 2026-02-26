@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/isso/internal/apperror"
 	"github.com/kkonst40/isso/internal/config"
 	"github.com/kkonst40/isso/internal/dto"
+	errs "github.com/kkonst40/isso/internal/errors"
 	"github.com/kkonst40/isso/internal/middleware"
 	"github.com/kkonst40/isso/internal/service"
 )
@@ -62,7 +62,7 @@ func (h *UserHandler) Exist(w http.ResponseWriter, r *http.Request) {
 
 	existingIDs, err := h.userService.Exist(r.Context(), inputIDs)
 	if err != nil {
-		errMsg, errCode := apperror.GetMsgCode(err)
+		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
 	}
@@ -87,7 +87,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := h.userService.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
-		errMsg, errCode := apperror.GetMsgCode(err)
+		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
 	}
@@ -131,7 +131,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.Create(r.Context(), req.Login, req.Password)
 	if err != nil {
-		errMsg, errCode := apperror.GetMsgCode(err)
+		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
 	}
@@ -151,7 +151,7 @@ func (h *UserHandler) UpdateLogin(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.UpdateLogin(r.Context(), requesterID, req.Login)
 	if err != nil {
-		errMsg, errCode := apperror.GetMsgCode(err)
+		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
 	}
@@ -171,7 +171,7 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.UpdatePassword(r.Context(), requesterID, req.Password)
 	if err != nil {
-		errMsg, errCode := apperror.GetMsgCode(err)
+		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
 	}
@@ -189,7 +189,7 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.Delete(r.Context(), ID, requesterID)
 	if err != nil {
-		errMsg, errCode := apperror.GetMsgCode(err)
+		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
 	}
