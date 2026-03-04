@@ -83,7 +83,7 @@ func New(cfg *config.Config) (*App, error) {
 	router.Handle("DELETE /{id}", authStack(http.HandlerFunc(userHandler.Delete)))
 
 	httpServer := &http.Server{
-		Addr:    ":" + cfg.HttpPort,
+		Addr:    ":" + cfg.RestPort,
 		Handler: router,
 	}
 

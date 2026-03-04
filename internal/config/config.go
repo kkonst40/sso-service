@@ -35,7 +35,7 @@ type CredConfig struct {
 
 type Config struct {
 	Env      string     `json:"env"`
-	HttpPort string     `json:"httpPort"`
+	RestPort string     `json:"restPort"`
 	GrpcPort string     `json:"grpcPort"`
 	JWT      JWTConfig  `json:"jwt"`
 	DB       DBConfig   `json:"db"`
@@ -89,7 +89,7 @@ func loadConfigEnv() (*Config, error) {
 
 	cfg := &Config{
 		Env:      getEnvString("ENV"),
-		HttpPort: getEnvString("HTTP_PORT"),
+		RestPort: getEnvString("REST_PORT"),
 		GrpcPort: getEnvString("GRPC_PORT"),
 		JWT: JWTConfig{
 			SecretKey:  getEnvString("JWT_SECRET"),
