@@ -39,3 +39,32 @@ func (s *UserGRPCHandler) Exist(ctx context.Context, req *pb.ExistRequest) (*pb.
 
 	return &pb.ExistResponse{ExistingIds: result}, nil
 }
+
+func (s *UserGRPCHandler) GetUsersLogins(ctx context.Context, req *pb.GetUsersLoginsRequest) (*pb.GetUsersLoginsResponse, error) {
+	// 1. Парсим входящие строки в uuid.UUID
+	var inputIDs []uuid.UUID
+	for _, idStr := range req.Ids {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			continue
+		}
+		inputIDs = append(inputIDs, id)
+	}
+
+	usersData, err := s.userService.GetLoginsByIDs(ctx, inputIDs)
+	if err != nil {
+		return nil, err // Здесь лучше обернуть в status.Error, если это gRPC ошибка
+	}
+
+	pbUsers := make([]*pb.UserLogin, 0, len(usersData))
+	for _, u := range usersData {
+		pbUsers = append(pbUsers, &pb.UserLogin{
+			Id:    u.ID.String(),
+			Login: u.Login,
+		})
+	}
+
+	return &pb.GetUsersLoginsResponse{
+		Users: pbUsers,
+	}, nil
+}

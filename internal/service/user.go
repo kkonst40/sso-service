@@ -40,10 +40,16 @@ func (s *UserService) All(ctx context.Context) ([]model.User, error) {
 	return s.userRepo.GetAll(ctx)
 }
 
+func (s *UserService) GetLoginsByIDs(ctx context.Context, userIDs []uuid.UUID) ([]model.UserInfo, error) {
+	userInfos, err := s.userRepo.GetLoginsByIDs(ctx, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get logins by IDs: %w", err)
+	}
+
+	return userInfos, nil
+}
+
 func (s *UserService) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, error) {
-	//if requesterID != s.specialID {
-	//	return false, fmt.Errorf("no permission")
-	//}
 	ids, err := s.userRepo.Exist(ctx, IDs)
 	if err != nil {
 		return nil, fmt.Errorf("check users existence: %w", err)

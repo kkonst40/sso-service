@@ -56,7 +56,7 @@
 <body>
 
     <div class="card">
-        <h2>Запрос к localhost:8002/me</h2>
+        <h2>Запрос к /me</h2>
         <button onclick="checkStatus()">Отправить запрос</button>
 
         <div id="statusDisplay">
@@ -76,7 +76,7 @@
 
             try {
                 // Отправляем запрос
-                const response = await fetch('http://localhost:8002/me', {
+                const response = await fetch('/me', {
                     method: 'GET',
                     // Ключевой параметр для работы с куками:
                     credentials: 'include'

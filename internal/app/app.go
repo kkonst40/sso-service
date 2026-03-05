@@ -47,30 +47,7 @@ func New(cfg *config.Config) (*App, error) {
 		userHandler = handler.New(userService, cfg)
 	)
 
-	authRouter := http.NewServeMux()
-	noAuthRouter := http.NewServeMux()
-
-	// for test
-	noAuthRouter.HandleFunc("GET /r", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/register.html")
-	})
-	noAuthRouter.HandleFunc("GET /l", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/login.html")
-	})
-	noAuthRouter.HandleFunc("GET /checkauth", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/me.html")
-	})
-
-	noAuthRouter.HandleFunc("GET /all", userHandler.All)
-	noAuthRouter.HandleFunc("POST /exist", userHandler.Exist)
-	noAuthRouter.HandleFunc("POST /login", userHandler.Login)
-	noAuthRouter.HandleFunc("POST /register", userHandler.Create)
-
-	authRouter.HandleFunc("GET /me", userHandler.Me)
-	authRouter.HandleFunc("POST /logout", userHandler.Logout)
-	authRouter.HandleFunc("PUT /updatelogin", userHandler.UpdateLogin)
-	authRouter.HandleFunc("PUT /updatepassword", userHandler.UpdatePassword)
-	authRouter.HandleFunc("DELETE /{id}", userHandler.Delete)
+	router := http.NewServeMux()
 
 	noAuthStack := middleware.CreateStack(
 		middleware.Recovery,
@@ -83,13 +60,31 @@ func New(cfg *config.Config) (*App, error) {
 		middleware.Auth(jwtProvider),
 	)
 
-	mainRouter := http.NewServeMux()
-	mainRouter.Handle("/", noAuthStack(noAuthRouter))
-	mainRouter.Handle("/", authStack(authRouter))
+	// for test
+	router.HandleFunc("GET /r", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/register.html")
+	})
+	router.HandleFunc("GET /l", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/login.html")
+	})
+	router.HandleFunc("GET /checkauth", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/me.html")
+	})
+
+	router.Handle("GET /all", noAuthStack(http.HandlerFunc(userHandler.All)))
+	router.Handle("POST /exist", noAuthStack(http.HandlerFunc(userHandler.Exist)))
+	router.Handle("POST /login", noAuthStack(http.HandlerFunc(userHandler.Login)))
+	router.Handle("POST /register", noAuthStack(http.HandlerFunc(userHandler.Create)))
+
+	router.Handle("GET /me", authStack(http.HandlerFunc(userHandler.Me)))
+	router.Handle("POST /logout", authStack(http.HandlerFunc(userHandler.Logout)))
+	router.Handle("PUT /updatelogin", authStack(http.HandlerFunc(userHandler.UpdateLogin)))
+	router.Handle("PUT /updatepassword", authStack(http.HandlerFunc(userHandler.UpdatePassword)))
+	router.Handle("DELETE /{id}", authStack(http.HandlerFunc(userHandler.Delete)))
 
 	httpServer := &http.Server{
-		Addr:    ":" + cfg.HttpPort,
-		Handler: mainRouter,
+		Addr:    ":" + cfg.RestPort,
+		Handler: router,
 	}
 
 	grpcServer := grpc.NewServer()
