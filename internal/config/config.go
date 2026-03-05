@@ -58,29 +58,43 @@ func Load() (*Config, error) {
 }
 
 func loadConfigEnv() (*Config, error) {
-	var err error
+	var (
+		errMissing error
+		errNotInt  error
+		errResult  error
+	)
+
 	getEnvString := func(key string) string {
 		val, ok := os.LookupEnv(key)
 		if !ok {
-			err = fmt.Errorf("%w\nmissing environment variable: %s", err, key)
+			if errMissing == nil {
+				errMissing = fmt.Errorf("missing environment variables: %s", key)
+			} else {
+				errMissing = fmt.Errorf("%w, %s", errMissing, key)
+			}
 			return ""
 		}
 		return val
 	}
 
 	getEnvInt := func(key string) int {
-		if err != nil {
-			return 0
-		}
 		val, ok := os.LookupEnv(key)
 		if !ok {
-			err = fmt.Errorf("%w\nmissing environment variable: %s", err, key)
+			if errMissing == nil {
+				errMissing = fmt.Errorf("missing environment variables: %s", key)
+			} else {
+				errMissing = fmt.Errorf("%w, %s", errMissing, key)
+			}
 			return 0
 		}
 
 		valInt, err := strconv.Atoi(val)
 		if err != nil {
-			err = fmt.Errorf("%w\nenvironment variable is not integer: %s", err, val)
+			if errNotInt == nil {
+				errNotInt = fmt.Errorf("environment variables must be integer: %s", val)
+			} else {
+				errNotInt = fmt.Errorf("%w, %s", errNotInt, val)
+			}
 			return 0
 		}
 
@@ -114,8 +128,20 @@ func loadConfigEnv() (*Config, error) {
 		},
 	}
 
-	if err != nil {
-		return nil, err
+	if errMissing != nil {
+		errResult = errMissing
+	}
+
+	if errNotInt != nil {
+		if errResult == nil {
+			errResult = errNotInt
+		} else {
+			errResult = fmt.Errorf("%w; %w", errResult, errNotInt)
+		}
+	}
+
+	if errResult != nil {
+		return nil, errResult
 	}
 
 	return cfg, nil
