@@ -8,3 +8,8 @@ type User struct {
 	PasswordHash string
 	TokenID      uuid.UUID
 }
+
+type UserInfo struct {
+	ID    uuid.UUID
+	Login string
+}

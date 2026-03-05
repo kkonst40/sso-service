@@ -107,6 +107,39 @@ func (r *UserRepo) GetByLogin(ctx context.Context, login string) (*model.User, e
 	return &user, nil
 }
 
+func (r *UserRepo) GetLoginsByIDs(ctx context.Context, IDs []uuid.UUID) ([]model.UserInfo, error) {
+	if len(IDs) == 0 {
+		return []model.UserInfo{}, nil
+	}
+
+	const query = `
+		SELECT id, login
+        FROM users
+        WHERE id = ANY($1)
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, IDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	var users []model.UserInfo
+	for rows.Next() {
+		var u model.UserInfo
+		if err := rows.Scan(&u.ID, &u.Login); err != nil {
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+		users = append(users, u)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 	const query = `
 		INSERT INTO users (id, login, password_hash, token_id)
@@ -125,7 +158,6 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-
 			if pgErr.Code == uniqueViolationCode {
 				if pgErr.ConstraintName == "users_login_key" {
 					return fmt.Errorf("%w: login '%s' taken", errs.ErrLoginExists, user.Login)
