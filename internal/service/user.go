@@ -49,6 +49,15 @@ func (s *UserService) GetLoginsByIDs(ctx context.Context, userIDs []uuid.UUID) (
 	return userInfos, nil
 }
 
+func (s *UserService) GetIDsByLogins(ctx context.Context, userLogins []string) ([]model.UserInfo, error) {
+	userInfos, err := s.userRepo.GetIDsByLogins(ctx, userLogins)
+	if err != nil {
+		return nil, fmt.Errorf("get IDs by logins: %w", err)
+	}
+
+	return userInfos, nil
+}
+
 func (s *UserService) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, error) {
 	ids, err := s.userRepo.Exist(ctx, IDs)
 	if err != nil {

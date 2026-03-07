@@ -7,6 +7,7 @@ option go_package = "internal/gen/user";
 service UserService {
   rpc Exist (ExistRequest) returns (ExistResponse);
   rpc GetUsersLogins (GetUsersLoginsRequest) returns (GetUsersLoginsResponse);
+  rpc GetUsersIDs (GetUsersIDsRequest) returns (GetUsersIDsResponse);
 }
 
 message ExistRequest {
@@ -17,15 +18,23 @@ message ExistResponse {
   repeated string existing_ids = 1;
 }
 
-message GetUsersLoginsRequest {
-  repeated string ids = 1;
-}
-
-message UserLogin {
+message UserInfo {
   string id = 1;
   string login = 2;
 }
 
+message GetUsersLoginsRequest {
+  repeated string ids = 1;
+}
+
 message GetUsersLoginsResponse {
-  repeated UserLogin users = 1;
+  repeated UserInfo users = 1;
+}
+
+message GetUsersIDsRequest {
+  repeated string logins = 1;
+}
+
+message GetUsersIDsResponse {
+  repeated UserInfo users = 1;
 }

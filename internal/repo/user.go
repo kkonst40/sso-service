@@ -140,6 +140,39 @@ func (r *UserRepo) GetLoginsByIDs(ctx context.Context, IDs []uuid.UUID) ([]model
 	return users, nil
 }
 
+func (r *UserRepo) GetIDsByLogins(ctx context.Context, logins []string) ([]model.UserInfo, error) {
+	if len(logins) == 0 {
+		return []model.UserInfo{}, nil
+	}
+
+	const query = `
+		SELECT id, login
+        FROM users
+        WHERE login = ANY($1)
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, logins)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	var users []model.UserInfo
+	for rows.Next() {
+		var u model.UserInfo
+		if err := rows.Scan(&u.ID, &u.Login); err != nil {
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+		users = append(users, u)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 	const query = `
 		INSERT INTO users (id, login, password_hash, token_id)
