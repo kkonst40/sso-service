@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Регистрация</title>
+    <title>Вход</title>
     <style>
         body {
             font-family: sans-serif;
@@ -64,7 +64,7 @@
         <h2>Вход</h2>
         <input type="text" id="login" name="login" placeholder="Логин" required>
         <input type="password" id="password" name="password" placeholder="Пароль" required>
-        <button type="submit">Отправить</button>
+        <button type="submit">Войти</button>
         <div id="message"></div>
     </form>
 
@@ -94,7 +94,7 @@
 
                 if (response.ok || response.status == 204) {
                     messageDiv.style.color = 'green';
-                    messageDiv.textContent = 'Успешно отправлено!';
+                    messageDiv.textContent = 'Успешно!';
                 } else {
                     messageDiv.style.color = 'red';
                     messageDiv.textContent = 'Ошибка сервера: ' + response.status;
