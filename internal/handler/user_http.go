@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -56,12 +57,14 @@ func (h *UserHandler) Exist(w http.ResponseWriter, r *http.Request) {
 	var inputIDs []uuid.UUID
 	err := json.NewDecoder(r.Body).Decode(&inputIDs)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	existingIDs, err := h.userService.Exist(r.Context(), inputIDs)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -81,12 +84,14 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req dto.LRUUser
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	token, err := h.userService.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -109,6 +114,7 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	requesterID := r.Context().Value(middleware.RequesterIDKey).(uuid.UUID)
 	err := h.userService.Logout(r.Context(), requesterID)
 	if err != nil {
+		log.Println(err)
 		//
 	}
 
@@ -125,12 +131,14 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req dto.LRUUser
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	err = h.userService.Create(r.Context(), req.Login, req.Password)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -145,12 +153,14 @@ func (h *UserHandler) UpdateLogin(w http.ResponseWriter, r *http.Request) {
 	var req dto.LRUUser
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	err = h.userService.UpdateLogin(r.Context(), requesterID, req.Login)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -165,12 +175,14 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 	var req dto.LRUUser
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	err = h.userService.UpdatePassword(r.Context(), requesterID, req.Password)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -184,11 +196,13 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	ID, err := uuid.Parse(idStr)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request parameter 'id'", http.StatusBadRequest)
 	}
 
 	err = h.userService.Delete(r.Context(), ID, requesterID)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
