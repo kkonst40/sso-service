@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -9,8 +10,8 @@ import (
 	"github.com/kkonst40/isso/internal/config"
 	"github.com/kkonst40/isso/internal/dto"
 	errs "github.com/kkonst40/isso/internal/errors"
-	"github.com/kkonst40/isso/internal/middleware"
 	"github.com/kkonst40/isso/internal/service"
+	"github.com/kkonst40/isso/internal/utils/auth"
 )
 
 type UserHandler struct {
@@ -29,64 +30,20 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *UserHandler) All(w http.ResponseWriter, r *http.Request) {
-	users, err := h.userService.All(r.Context())
-	if err != nil {
-		return
-	}
-
-	userDTOs := make([]dto.GetUser, 0, len(users))
-	for _, user := range users {
-		userDTOs = append(userDTOs, dto.GetUser{
-			ID:    user.ID,
-			Login: user.Login,
-		})
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(userDTOs); err != nil {
-		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *UserHandler) Exist(w http.ResponseWriter, r *http.Request) {
-	var inputIDs []uuid.UUID
-	err := json.NewDecoder(r.Body).Decode(&inputIDs)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	existingIDs, err := h.userService.Exist(r.Context(), inputIDs)
-	if err != nil {
-		errMsg, errCode := errs.MapError(err)
-		http.Error(w, errMsg, errCode)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	if err := json.NewEncoder(w).Encode(existingIDs); err != nil {
-		http.Error(w, "Encoding response body error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var req dto.LRUUser
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	token, err := h.userService.Login(r.Context(), req.Login, req.Password)
+	token, err := h.userService.Login(ctx, req.Login, req.Password)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -106,9 +63,12 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	requesterID := r.Context().Value(middleware.RequesterIDKey).(uuid.UUID)
-	err := h.userService.Logout(r.Context(), requesterID)
+	ctx := r.Context()
+	requesterID := auth.GetUserID(ctx)
+
+	err := h.userService.Logout(ctx, requesterID)
 	if err != nil {
+		log.Println(err)
 		//
 	}
 
@@ -122,15 +82,19 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var req dto.LRUUser
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	err = h.userService.Create(r.Context(), req.Login, req.Password)
+	err = h.userService.Create(ctx, req.Login, req.Password)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -140,17 +104,20 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) UpdateLogin(w http.ResponseWriter, r *http.Request) {
-	requesterID := r.Context().Value(middleware.RequesterIDKey).(uuid.UUID)
+	ctx := r.Context()
+	requesterID := auth.GetUserID(ctx)
 
 	var req dto.LRUUser
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	err = h.userService.UpdateLogin(r.Context(), requesterID, req.Login)
+	err = h.userService.UpdateLogin(ctx, requesterID, req.Login)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -160,17 +127,20 @@ func (h *UserHandler) UpdateLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
-	requesterID := r.Context().Value(middleware.RequesterIDKey).(uuid.UUID)
+	ctx := r.Context()
+	requesterID := auth.GetUserID(ctx)
 
 	var req dto.LRUUser
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	err = h.userService.UpdatePassword(r.Context(), requesterID, req.Password)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return
@@ -180,15 +150,19 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	requesterID := r.Context().Value(middleware.RequesterIDKey).(uuid.UUID)
+	ctx := r.Context()
+	requesterID := auth.GetUserID(ctx)
+
 	idStr := r.PathValue("id")
 	ID, err := uuid.Parse(idStr)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid request parameter 'id'", http.StatusBadRequest)
 	}
 
 	err = h.userService.Delete(r.Context(), ID, requesterID)
 	if err != nil {
+		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
 		http.Error(w, errMsg, errCode)
 		return

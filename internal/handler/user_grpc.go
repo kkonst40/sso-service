@@ -41,7 +41,6 @@ func (s *UserGRPCHandler) Exist(ctx context.Context, req *pb.ExistRequest) (*pb.
 }
 
 func (s *UserGRPCHandler) GetUsersLogins(ctx context.Context, req *pb.GetUsersLoginsRequest) (*pb.GetUsersLoginsResponse, error) {
-	// 1. Парсим входящие строки в uuid.UUID
 	var inputIDs []uuid.UUID
 	for _, idStr := range req.Ids {
 		id, err := uuid.Parse(idStr)
@@ -53,18 +52,37 @@ func (s *UserGRPCHandler) GetUsersLogins(ctx context.Context, req *pb.GetUsersLo
 
 	usersData, err := s.userService.GetLoginsByIDs(ctx, inputIDs)
 	if err != nil {
-		return nil, err // Здесь лучше обернуть в status.Error, если это gRPC ошибка
+		return nil, err // обернуть в status.Error, если gRPC ошибка
 	}
 
-	pbUsers := make([]*pb.UserLogin, 0, len(usersData))
+	pbUsers := make([]*pb.UserInfo, 0, len(usersData))
 	for _, u := range usersData {
-		pbUsers = append(pbUsers, &pb.UserLogin{
+		pbUsers = append(pbUsers, &pb.UserInfo{
 			Id:    u.ID.String(),
 			Login: u.Login,
 		})
 	}
 
 	return &pb.GetUsersLoginsResponse{
+		Users: pbUsers,
+	}, nil
+}
+
+func (s *UserGRPCHandler) GetUsersIDs(ctx context.Context, req *pb.GetUsersIDsRequest) (*pb.GetUsersIDsResponse, error) {
+	usersData, err := s.userService.GetIDsByLogins(ctx, req.Logins)
+	if err != nil {
+		return nil, err // обернуть в status.Error, если gRPC ошибка
+	}
+
+	pbUsers := make([]*pb.UserInfo, 0, len(usersData))
+	for _, u := range usersData {
+		pbUsers = append(pbUsers, &pb.UserInfo{
+			Id:    u.ID.String(),
+			Login: u.Login,
+		})
+	}
+
+	return &pb.GetUsersIDsResponse{
 		Users: pbUsers,
 	}, nil
 }

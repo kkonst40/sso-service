@@ -24,40 +24,6 @@ func New(db *sql.DB) *UserRepo {
 	}
 }
 
-func (r *UserRepo) GetAll(ctx context.Context) ([]model.User, error) {
-	const query = `
-		SELECT *
-		FROM users
-	`
-
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
-	}
-	defer rows.Close()
-
-	users := []model.User{}
-	for rows.Next() {
-		var user model.User
-		if err := rows.Scan(
-			&user.ID,
-			&user.Login,
-			&user.PasswordHash,
-			&user.TokenID,
-		); err != nil {
-			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
-		}
-
-		users = append(users, user)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
-	}
-
-	return users, nil
-}
-
 func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (*model.User, error) {
 	const query = `
 		SELECT *
@@ -119,6 +85,39 @@ func (r *UserRepo) GetLoginsByIDs(ctx context.Context, IDs []uuid.UUID) ([]model
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, IDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	var users []model.UserInfo
+	for rows.Next() {
+		var u model.UserInfo
+		if err := rows.Scan(&u.ID, &u.Login); err != nil {
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+		users = append(users, u)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *UserRepo) GetIDsByLogins(ctx context.Context, logins []string) ([]model.UserInfo, error) {
+	if len(logins) == 0 {
+		return []model.UserInfo{}, nil
+	}
+
+	const query = `
+		SELECT id, login
+        FROM users
+        WHERE login = ANY($1)
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, logins)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}

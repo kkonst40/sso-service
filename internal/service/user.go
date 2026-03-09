@@ -10,10 +10,11 @@ import (
 	"github.com/kkonst40/isso/internal/model"
 	"github.com/kkonst40/isso/internal/repo"
 	"github.com/kkonst40/isso/internal/utils"
+	"github.com/kkonst40/isso/internal/utils/auth"
 )
 
 type UserService struct {
-	jwtProvider   *utils.JWTProvider
+	jwtProvider   *auth.JWTProvider
 	pwdHandler    *utils.PasswordHandler
 	credValidator *utils.CredValidator
 	userRepo      *repo.UserRepo
@@ -21,7 +22,7 @@ type UserService struct {
 }
 
 func New(
-	jwtProvider *utils.JWTProvider,
+	jwtProvider *auth.JWTProvider,
 	pwdHandler *utils.PasswordHandler,
 	credValidator *utils.CredValidator,
 	userRepo *repo.UserRepo,
@@ -36,14 +37,19 @@ func New(
 	}
 }
 
-func (s *UserService) All(ctx context.Context) ([]model.User, error) {
-	return s.userRepo.GetAll(ctx)
-}
-
 func (s *UserService) GetLoginsByIDs(ctx context.Context, userIDs []uuid.UUID) ([]model.UserInfo, error) {
 	userInfos, err := s.userRepo.GetLoginsByIDs(ctx, userIDs)
 	if err != nil {
 		return nil, fmt.Errorf("get logins by IDs: %w", err)
+	}
+
+	return userInfos, nil
+}
+
+func (s *UserService) GetIDsByLogins(ctx context.Context, userLogins []string) ([]model.UserInfo, error) {
+	userInfos, err := s.userRepo.GetIDsByLogins(ctx, userLogins)
+	if err != nil {
+		return nil, fmt.Errorf("get IDs by logins: %w", err)
 	}
 
 	return userInfos, nil
