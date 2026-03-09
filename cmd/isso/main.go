@@ -18,10 +18,14 @@ func main() {
 		log.Fatalf("Config loading error: %v", err.Error())
 	}
 
+	log.Println("Config loaded")
+
 	application, err := app.New(cfg)
 	if err != nil {
 		log.Fatalf("App creating error: %v", err.Error())
 	}
+
+	log.Println("App initialized")
 
 	appCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
