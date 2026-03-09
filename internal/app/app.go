@@ -84,7 +84,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	router := http.NewServeMux()
 	router.Handle("/api/", http.StripPrefix("/api", apiRouter))
-	router.Handle("/", pagesRouter)
+	router.Handle("/", noAuthStack(pagesRouter))
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RestPort,
