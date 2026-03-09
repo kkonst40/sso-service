@@ -1,22 +1,17 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 
-	"github.com/kkonst40/isso/internal/utils"
+	"github.com/kkonst40/isso/internal/utils/auth"
 )
 
-type contextKey string
-
-const RequesterIDKey contextKey = "requesterID"
-
-func Auth(jwtProvider *utils.JWTProvider) Middleware {
+func Auth(jwtProvider *auth.JWTProvider) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(jwtProvider.Cfg.JWT.CookieName)
 			if err != nil {
-				http.Error(w, "Invalid cookie", http.StatusUnauthorized)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
@@ -26,13 +21,13 @@ func Auth(jwtProvider *utils.JWTProvider) Middleware {
 				return
 			}
 
-			claims, err := jwtProvider.ValidateToken(tokenString)
+			userID, err := jwtProvider.ValidateToken(tokenString)
 			if err != nil {
-				http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), RequesterIDKey, claims.ID)
+			ctx := auth.ContextWithUserID(r.Context(), userID)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

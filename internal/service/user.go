@@ -10,10 +10,11 @@ import (
 	"github.com/kkonst40/isso/internal/model"
 	"github.com/kkonst40/isso/internal/repo"
 	"github.com/kkonst40/isso/internal/utils"
+	"github.com/kkonst40/isso/internal/utils/auth"
 )
 
 type UserService struct {
-	jwtProvider   *utils.JWTProvider
+	jwtProvider   *auth.JWTProvider
 	pwdHandler    *utils.PasswordHandler
 	credValidator *utils.CredValidator
 	userRepo      *repo.UserRepo
@@ -21,7 +22,7 @@ type UserService struct {
 }
 
 func New(
-	jwtProvider *utils.JWTProvider,
+	jwtProvider *auth.JWTProvider,
 	pwdHandler *utils.PasswordHandler,
 	credValidator *utils.CredValidator,
 	userRepo *repo.UserRepo,
@@ -34,10 +35,6 @@ func New(
 		userRepo:      userRepo,
 		specialID:     specialID,
 	}
-}
-
-func (s *UserService) All(ctx context.Context) ([]model.User, error) {
-	return s.userRepo.GetAll(ctx)
 }
 
 func (s *UserService) GetLoginsByIDs(ctx context.Context, userIDs []uuid.UUID) ([]model.UserInfo, error) {

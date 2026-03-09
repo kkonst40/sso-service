@@ -17,6 +17,7 @@ import (
 	"github.com/kkonst40/isso/internal/repo"
 	"github.com/kkonst40/isso/internal/service"
 	"github.com/kkonst40/isso/internal/utils"
+	"github.com/kkonst40/isso/internal/utils/auth"
 	"google.golang.org/grpc"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -36,7 +37,7 @@ func New(cfg *config.Config) (*App, error) {
 	}
 
 	var (
-		jwtProvider   = utils.NewJWTProvider(cfg)
+		jwtProvider   = auth.NewJWTProvider(cfg)
 		pwdHasher     = utils.NewPasswordHandler()
 		credValidator = utils.NewValidator(cfg)
 	)
@@ -47,7 +48,8 @@ func New(cfg *config.Config) (*App, error) {
 		userHandler = handler.New(userService, cfg)
 	)
 
-	router := http.NewServeMux()
+	apiRouter := http.NewServeMux()
+	pagesRouter := http.NewServeMux()
 
 	noAuthStack := middleware.CreateStack(
 		middleware.Recovery,
@@ -61,26 +63,28 @@ func New(cfg *config.Config) (*App, error) {
 	)
 
 	// for test
-	router.HandleFunc("GET /r", func(w http.ResponseWriter, r *http.Request) {
+	pagesRouter.HandleFunc("GET /register", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/register.html")
 	})
-	router.HandleFunc("GET /l", func(w http.ResponseWriter, r *http.Request) {
+	pagesRouter.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/login.html")
 	})
-	router.HandleFunc("GET /checkauth", func(w http.ResponseWriter, r *http.Request) {
+	pagesRouter.HandleFunc("GET /me", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/me.html")
 	})
 
-	router.Handle("GET /all", noAuthStack(http.HandlerFunc(userHandler.All)))
-	router.Handle("POST /exist", noAuthStack(http.HandlerFunc(userHandler.Exist)))
-	router.Handle("POST /login", noAuthStack(http.HandlerFunc(userHandler.Login)))
-	router.Handle("POST /register", noAuthStack(http.HandlerFunc(userHandler.Create)))
+	apiRouter.Handle("POST /login", noAuthStack(http.HandlerFunc(userHandler.Login)))
+	apiRouter.Handle("POST /register", noAuthStack(http.HandlerFunc(userHandler.Create)))
 
-	router.Handle("GET /me", authStack(http.HandlerFunc(userHandler.Me)))
-	router.Handle("POST /logout", authStack(http.HandlerFunc(userHandler.Logout)))
-	router.Handle("PUT /updatelogin", authStack(http.HandlerFunc(userHandler.UpdateLogin)))
-	router.Handle("PUT /updatepassword", authStack(http.HandlerFunc(userHandler.UpdatePassword)))
-	router.Handle("DELETE /{id}", authStack(http.HandlerFunc(userHandler.Delete)))
+	apiRouter.Handle("GET /me", authStack(http.HandlerFunc(userHandler.Me)))
+	apiRouter.Handle("POST /logout", authStack(http.HandlerFunc(userHandler.Logout)))
+	apiRouter.Handle("PUT /updatelogin", authStack(http.HandlerFunc(userHandler.UpdateLogin)))
+	apiRouter.Handle("PUT /updatepassword", authStack(http.HandlerFunc(userHandler.UpdatePassword)))
+	apiRouter.Handle("DELETE /{id}", authStack(http.HandlerFunc(userHandler.Delete)))
+
+	router := http.NewServeMux()
+	router.Handle("/api/", http.StripPrefix("/api", apiRouter))
+	router.Handle("/", pagesRouter)
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RestPort,

@@ -1,6 +1,7 @@
-package utils
+package auth
 
 import (
+	"context"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -8,6 +9,18 @@ import (
 	"github.com/kkonst40/isso/internal/config"
 	"github.com/kkonst40/isso/internal/model"
 )
+
+type ctxKey struct{}
+
+var userIDKey ctxKey
+
+func GetUserID(ctx context.Context) uuid.UUID {
+	return ctx.Value(userIDKey).(uuid.UUID)
+}
+
+func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
 
 type UserClaims struct {
 	ID       uuid.UUID `json:"id"`
@@ -46,7 +59,7 @@ func (p *JWTProvider) Generate(user *model.User) (string, error) {
 	return token.SignedString([]byte(p.Cfg.JWT.SecretKey))
 }
 
-func (p *JWTProvider) ValidateToken(tokenString string) (*UserClaims, error) {
+func (p *JWTProvider) ValidateToken(tokenString string) (uuid.UUID, error) {
 	claims := &UserClaims{}
 
 	token, err := jwt.ParseWithClaims(
@@ -63,12 +76,12 @@ func (p *JWTProvider) ValidateToken(tokenString string) (*UserClaims, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		return uuid.Nil, err
 	}
 
 	if !token.Valid {
-		return nil, jwt.ErrTokenInvalidClaims
+		return uuid.Nil, jwt.ErrTokenInvalidClaims
 	}
 
-	return claims, nil
+	return claims.ID, nil
 }

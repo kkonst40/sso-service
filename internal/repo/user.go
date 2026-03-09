@@ -24,40 +24,6 @@ func New(db *sql.DB) *UserRepo {
 	}
 }
 
-func (r *UserRepo) GetAll(ctx context.Context) ([]model.User, error) {
-	const query = `
-		SELECT *
-		FROM users
-	`
-
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
-	}
-	defer rows.Close()
-
-	users := []model.User{}
-	for rows.Next() {
-		var user model.User
-		if err := rows.Scan(
-			&user.ID,
-			&user.Login,
-			&user.PasswordHash,
-			&user.TokenID,
-		); err != nil {
-			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
-		}
-
-		users = append(users, user)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
-	}
-
-	return users, nil
-}
-
 func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (*model.User, error) {
 	const query = `
 		SELECT *
