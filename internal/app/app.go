@@ -31,7 +31,7 @@ type App struct {
 }
 
 func New(cfg *config.Config) (*App, error) {
-	db, err := SetupDB(cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.DBName)
+	db, err := SetupDB(cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.Port, cfg.DB.DBName)
 	if err != nil {
 		return nil, err
 	}
@@ -139,8 +139,8 @@ func (a *App) Shutdown(ctx context.Context) {
 	}
 }
 
-func SetupDB(user, pwd, host, dbName string) (*sql.DB, error) {
-	dbUrl := fmt.Sprintf("postgres://%s:%s@%s/%s", user, pwd, host, dbName)
+func SetupDB(user, pwd, host, port, dbName string) (*sql.DB, error) {
+	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", user, pwd, host, port, dbName)
 
 	db, err := sql.Open("pgx", dbUrl)
 	if err != nil {

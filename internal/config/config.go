@@ -11,6 +11,7 @@ import (
 
 type DBConfig struct {
 	Host     string `json:"host"`
+	Port     string `json:"port"`
 	User     string `json:"user"`
 	Password string `json:"password"`
 	DBName   string `json:"dbname"`
@@ -114,6 +115,7 @@ func loadConfigEnv() (*Config, error) {
 		},
 		DB: DBConfig{
 			Host:     getEnvString("DB_HOST"),
+			Port:     getEnvString("DB_PORT"),
 			User:     getEnvString("DB_USER"),
 			Password: getEnvString("DB_PASSWORD"),
 			DBName:   getEnvString("DB_NAME"),
