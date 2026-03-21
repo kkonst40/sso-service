@@ -41,7 +41,14 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.userService.Login(ctx, req.Login, req.Password)
+	deviceID, err := uuid.Parse(r.Header.Get("X-Device-Id"))
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Invalid X-Device-Id header value", http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.userService.Login(ctx, req.Login, req.Password, deviceID)
 	if err != nil {
 		log.Println(err)
 		errMsg, errCode := errs.MapError(err)
@@ -66,16 +73,25 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := auth.GetUserID(ctx)
 
-	err := h.userService.Logout(ctx, requesterID)
+	deviceID, err := uuid.Parse(r.Header.Get("X-Device-Id"))
 	if err != nil {
-		log.Println(err)
-		//
+		if err := h.userService.LogoutAll(ctx, requesterID); err != nil {
+			log.Println(err)
+		}
+	} else {
+		if err := h.userService.Logout(ctx, requesterID, deviceID); err != nil {
+			log.Println(err)
+		}
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:   "pechenye",
-		Value:  "",
-		MaxAge: -1,
+		Name:     h.cfg.JWT.CookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // false только для localhost без https
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
 	})
 
 	w.WriteHeader(http.StatusNoContent)

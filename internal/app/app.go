@@ -43,8 +43,9 @@ func New(cfg *config.Config) (*App, error) {
 	)
 
 	var (
-		userRepo    = repo.New(db)
-		userService = service.New(jwtProvider, pwdHasher, credValidator, userRepo, uuid.UUID{})
+		userRepo    = repo.NewUserRepo(db)
+		sessionRepo = repo.NewSessionRepo(db)
+		userService = service.New(jwtProvider, pwdHasher, credValidator, userRepo, sessionRepo, uuid.UUID{})
 		userHandler = handler.New(userService, cfg)
 	)
 

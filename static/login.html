@@ -73,7 +73,7 @@
         const messageDiv = document.getElementById('message');
 
         form.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Предотвращаем стандартную перезагрузку страницы
+            e.preventDefault();
 
             const login = document.getElementById('login').value;
             const password = document.getElementById('password').value;
@@ -87,7 +87,8 @@
                 const response = await fetch('api/login', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Device-Id': getDeviceId(),
                     },
                     body: JSON.stringify(data)
                 });
@@ -95,6 +96,7 @@
                 if (response.ok || response.status == 204) {
                     messageDiv.style.color = 'green';
                     messageDiv.textContent = 'Успешно!';
+                    window.location.href = '/chat/';
                 } else {
                     messageDiv.style.color = 'red';
                     messageDiv.textContent = 'Ошибка сервера: ' + response.status;
@@ -104,6 +106,19 @@
                 messageDiv.textContent = 'Ошибка соединения: ' + error.message;
             }
         });
+
+        function getDeviceId() {
+            const STORAGE_KEY = 'device_id';
+
+            let deviceId = localStorage.getItem(STORAGE_KEY);
+
+            if (!deviceId) {
+                deviceId = crypto.randomUUID();
+                localStorage.setItem(STORAGE_KEY, deviceId);
+            }
+
+            return deviceId;
+        }
     </script>
 
 </body>

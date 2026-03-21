@@ -22,21 +22,40 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             text-align: center;
+            min-width: 300px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
         }
 
         button {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
-            background-color: #28a745;
-            color: white;
             border: none;
             border-radius: 5px;
             transition: 0.3s;
+            color: white;
         }
 
-        button:hover {
+        .btn-check {
+            background-color: #28a745;
+        }
+
+        .btn-check:hover {
             background-color: #218838;
+        }
+
+        .btn-logout {
+            background-color: #dc3545;
+        }
+
+        .btn-logout:hover {
+            background-color: #c82333;
         }
 
         #statusDisplay {
@@ -45,10 +64,10 @@
             font-weight: bold;
         }
 
-        .status-badge {
-            padding: 5px 15px;
-            border-radius: 20px;
-            display: inline-block;
+        #statusText {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -56,48 +75,82 @@
 <body>
 
     <div class="card">
-        <h2>Запрос к /me</h2>
-        <button onclick="checkStatus()">Отправить запрос</button>
+        <h2>Управление сессией</h2>
+
+        <div class="button-group">
+            <button class="btn-check" onclick="checkStatus()">Проверить статус</button>
+            <button class="btn-logout" onclick="logout()">Выйти</button>
+        </div>
 
         <div id="statusDisplay">
             Статус: <span id="statusCode">---</span>
         </div>
-        <p id="statusText" style="color: #666;"></p>
+        <p id="statusText"></p>
     </div>
 
     <script>
-        async function checkStatus() {
-            const codeSpan = document.getElementById('statusCode');
-            const textP = document.getElementById('statusText');
+        const codeSpan = document.getElementById('statusCode');
+        const textP = document.getElementById('statusText');
 
+        function resetDisplay() {
             codeSpan.textContent = 'Ожидание...';
-            codeSpan.className = '';
+            codeSpan.style.color = 'black';
             textP.textContent = '';
+        }
 
+        async function checkStatus() {
+            resetDisplay();
             try {
-                // Отправляем запрос
                 const response = await fetch('api/me', {
                     method: 'GET',
-                    // Ключевой параметр для работы с куками:
                     credentials: 'include'
                 });
 
-                // Выводим цифровой статус (например, 200, 401, 404)
                 codeSpan.textContent = response.status;
                 textP.textContent = `Результат: ${response.statusText}`;
+                codeSpan.style.color = response.ok ? '#28a745' : '#dc3545';
 
-                // Подсвечиваем результат
+            } catch (error) {
+                codeSpan.textContent = 'Ошибка';
+                codeSpan.style.color = '#dc3545';
+                textP.textContent = 'Не удалось связаться с сервером';
+            }
+        }
+
+        async function logout() {
+            if (!confirm('Вы уверены, что хотите выйти?')) return;
+
+            resetDisplay();
+            try {
+                const response = await fetch('api/logout', {
+                    method: 'POST',
+                    headers: {
+                        'X-Device-Id': getDeviceId(),
+                    },
+                    credentials: 'include'
+                });
+
+                codeSpan.textContent = response.status;
+
                 if (response.ok) {
-                    codeSpan.style.color = '#28a745'; // Зеленый для 200-299
+                    textP.textContent = 'Вы успешно вышли из системы';
+                    codeSpan.style.color = '#28a745';
                 } else {
-                    codeSpan.style.color = '#dc3545'; // Красный для ошибок
+                    textP.textContent = `Ошибка при выходе: ${response.statusText}`;
+                    codeSpan.style.color = '#dc3545';
                 }
 
             } catch (error) {
                 codeSpan.textContent = 'Ошибка';
                 codeSpan.style.color = '#dc3545';
-                textP.textContent = 'Не удалось связаться с сервером (CORS или сервер выключен)';
+                textP.textContent = 'Сетевая ошибка при попытке выхода';
             }
+        }
+
+        function getDeviceId() {
+            const STORAGE_KEY = 'device_id';
+
+            return localStorage.getItem(STORAGE_KEY);
         }
     </script>
 

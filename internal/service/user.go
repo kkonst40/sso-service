@@ -18,6 +18,7 @@ type UserService struct {
 	pwdHandler    *utils.PasswordHandler
 	credValidator *utils.CredValidator
 	userRepo      *repo.UserRepo
+	sessionRepo   *repo.SessionRepo
 	specialID     uuid.UUID
 }
 
@@ -26,6 +27,7 @@ func New(
 	pwdHandler *utils.PasswordHandler,
 	credValidator *utils.CredValidator,
 	userRepo *repo.UserRepo,
+	sessionRepo *repo.SessionRepo,
 	specialID uuid.UUID,
 ) *UserService {
 	return &UserService{
@@ -33,6 +35,7 @@ func New(
 		pwdHandler:    pwdHandler,
 		credValidator: credValidator,
 		userRepo:      userRepo,
+		sessionRepo:   sessionRepo,
 		specialID:     specialID,
 	}
 }
@@ -64,7 +67,7 @@ func (s *UserService) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, 
 	return ids, nil
 }
 
-func (s *UserService) Login(ctx context.Context, login, password string) (string, error) {
+func (s *UserService) Login(ctx context.Context, login, password string, deviceID uuid.UUID) (string, error) {
 	user, err := s.userRepo.GetByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
@@ -77,7 +80,22 @@ func (s *UserService) Login(ctx context.Context, login, password string) (string
 		return "", errs.ErrInvalidCredentials
 	}
 
-	token, err := s.jwtProvider.Generate(user)
+	sessionID, err := uuid.NewV7()
+	if err != nil {
+		return "", fmt.Errorf("%w: session id: %w", errs.ErrGenerating, err)
+	}
+
+	session := &model.Session{
+		ID:       sessionID,
+		UserID:   user.ID,
+		DeviceID: deviceID,
+	}
+
+	if err := s.sessionRepo.Create(ctx, session); err != nil {
+		return "", fmt.Errorf("creating session: %w", err)
+	}
+
+	token, err := s.jwtProvider.Generate(user, session)
 	if err != nil {
 		return "", fmt.Errorf("%w: jwt token: %w", errs.ErrGenerating, err)
 	}
@@ -106,7 +124,6 @@ func (s *UserService) Create(ctx context.Context, login, password string) error 
 		ID:           userID,
 		Login:        login,
 		PasswordHash: pwdHash,
-		TokenID:      uuid.New(),
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
@@ -171,15 +188,19 @@ func (s *UserService) Delete(ctx context.Context, ID, requesterID uuid.UUID) err
 	return nil
 }
 
-func (s *UserService) Logout(ctx context.Context, ID uuid.UUID) error {
-	user, err := s.userRepo.GetByID(ctx, ID)
+func (s *UserService) LogoutAll(ctx context.Context, ID uuid.UUID) error {
+	err := s.sessionRepo.DeleteAll(ctx, ID)
 	if err != nil {
-		return fmt.Errorf("get user %v to log out: %w", ID, err)
+		return fmt.Errorf("session delete: %w", err)
 	}
 
-	user.TokenID = uuid.New()
-	if err := s.userRepo.Update(ctx, user); err != nil {
-		return fmt.Errorf("update user %v token ID: %w", ID, err)
+	return nil
+}
+
+func (s *UserService) Logout(ctx context.Context, ID, deviceID uuid.UUID) error {
+	err := s.sessionRepo.Delete(ctx, ID, deviceID)
+	if err != nil {
+		return fmt.Errorf("session delete: %w", err)
 	}
 
 	return nil
