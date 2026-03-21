@@ -18,7 +18,7 @@ type UserRepo struct {
 
 const uniqueViolationCode = "23505"
 
-func New(db *sql.DB) *UserRepo {
+func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{
 		db: db,
 	}
@@ -26,7 +26,7 @@ func New(db *sql.DB) *UserRepo {
 
 func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (*model.User, error) {
 	const query = `
-		SELECT *
+		SELECT id, login, password_hash
 		FROM users
 		WHERE id = $1
 	`
@@ -50,7 +50,7 @@ func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (*model.User, erro
 
 func (r *UserRepo) GetByLogin(ctx context.Context, login string) (*model.User, error) {
 	const query = `
-		SELECT id, login, password_hash, token_id
+		SELECT id, login, password_hash
 		FROM users
 		WHERE login = $1
 	`
@@ -60,7 +60,6 @@ func (r *UserRepo) GetByLogin(ctx context.Context, login string) (*model.User, e
 		&user.ID,
 		&user.Login,
 		&user.PasswordHash,
-		&user.TokenID,
 	)
 
 	if err == sql.ErrNoRows {
@@ -141,8 +140,8 @@ func (r *UserRepo) GetIDsByLogins(ctx context.Context, logins []string) ([]model
 
 func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 	const query = `
-		INSERT INTO users (id, login, password_hash, token_id)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (id, login, password_hash)
+		VALUES ($1, $2, $3)
 	`
 
 	_, err := r.db.ExecContext(
@@ -151,15 +150,14 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 		user.ID,
 		user.Login,
 		user.PasswordHash,
-		user.TokenID,
 	)
 
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == uniqueViolationCode {
-				if pgErr.ConstraintName == "users_login_key" {
-					return fmt.Errorf("%w: login '%s' taken", errs.ErrLoginExists, user.Login)
+				if pgErr.ConstraintName == "users_login" {
+					return errs.ErrLoginExists
 				}
 			}
 		}
@@ -176,11 +174,10 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 		SET 
 			login = $1,
 			password_hash = $2,
-			token_id = $3
-		WHERE id = $4
+		WHERE id = $3
 	`
 
-	res, err := r.db.ExecContext(ctx, query, user.Login, user.PasswordHash, user.TokenID, user.ID)
+	res, err := r.db.ExecContext(ctx, query, user.Login, user.PasswordHash, user.ID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {

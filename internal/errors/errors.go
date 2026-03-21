@@ -12,6 +12,7 @@ var (
 	ErrDatabase           = errors.New("internal db error")
 	ErrUserNotFound       = errors.New("user not found")
 	ErrLoginExists        = errors.New("user already exists")
+	ErrSessionExists      = errors.New("session already exists")
 	ErrForbidden          = errors.New("no permission")
 	ErrGenerating         = errors.New("generating error")
 )

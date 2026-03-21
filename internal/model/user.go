@@ -6,7 +6,6 @@ type User struct {
 	ID           uuid.UUID
 	Login        string
 	PasswordHash string
-	TokenID      uuid.UUID
 }
 
 type UserInfo struct {

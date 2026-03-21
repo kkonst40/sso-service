@@ -23,9 +23,9 @@ func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {
 }
 
 type UserClaims struct {
-	ID       uuid.UUID `json:"id"`
-	UserName string    `json:"userName"`
-	TokenID  uuid.UUID `json:"tokenId"`
+	ID        uuid.UUID `json:"id"`
+	UserName  string    `json:"userName"`
+	SessionID uuid.UUID `json:"sid"`
 	jwt.RegisteredClaims
 }
 
@@ -39,11 +39,11 @@ func NewJWTProvider(cfg *config.Config) *JWTProvider {
 	}
 }
 
-func (p *JWTProvider) Generate(user *model.User) (string, error) {
+func (p *JWTProvider) Generate(user *model.User, session *model.Session) (string, error) {
 	claims := UserClaims{
-		ID:       user.ID,
-		TokenID:  user.TokenID,
-		UserName: user.Login,
+		ID:        user.ID,
+		UserName:  user.Login,
+		SessionID: session.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:   p.Cfg.JWT.Issuer,
 			Audience: []string{p.Cfg.JWT.Audience},
