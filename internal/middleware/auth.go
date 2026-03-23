@@ -6,10 +6,10 @@ import (
 	"github.com/kkonst40/isso/internal/utils/auth"
 )
 
-func Auth(jwtProvider *auth.JWTProvider) Middleware {
+func Auth(jwtProvider *auth.JWTProvider, cookieName string) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie(jwtProvider.Cfg.JWT.CookieName)
+			cookie, err := r.Cookie(cookieName)
 			if err != nil {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return

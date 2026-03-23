@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/isso/internal/config"
+	"github.com/kkonst40/isso/internal/eventbus"
 	pb "github.com/kkonst40/isso/internal/gen/user"
 	"github.com/kkonst40/isso/internal/handler"
 	"github.com/kkonst40/isso/internal/middleware"
@@ -40,12 +41,21 @@ func New(cfg *config.Config) (*App, error) {
 		jwtProvider   = auth.NewJWTProvider(cfg)
 		pwdHasher     = utils.NewPasswordHandler()
 		credValidator = utils.NewValidator(cfg)
+		eventProducer = eventbus.NewProducer(cfg)
 	)
 
 	var (
 		userRepo    = repo.NewUserRepo(db)
 		sessionRepo = repo.NewSessionRepo(db)
-		userService = service.New(jwtProvider, pwdHasher, credValidator, userRepo, sessionRepo, uuid.UUID{})
+		userService = service.New(
+			jwtProvider,
+			pwdHasher,
+			credValidator,
+			eventProducer,
+			userRepo,
+			sessionRepo,
+			uuid.UUID{},
+		)
 		userHandler = handler.New(userService, cfg)
 	)
 
@@ -60,7 +70,7 @@ func New(cfg *config.Config) (*App, error) {
 	authStack := middleware.CreateStack(
 		middleware.Recovery,
 		middleware.Timeout(3*time.Second),
-		middleware.Auth(jwtProvider),
+		middleware.Auth(jwtProvider, cfg.JWT.CookieName),
 	)
 
 	// for test

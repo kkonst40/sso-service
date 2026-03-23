@@ -46,28 +46,52 @@ func (r *SessionRepo) Create(ctx context.Context, session *model.Session) error 
 	return nil
 }
 
-func (r *SessionRepo) Delete(ctx context.Context, userID, deviceID uuid.UUID) error {
+func (r *SessionRepo) Delete(ctx context.Context, userID, deviceID uuid.UUID) (uuid.UUID, error) {
 	const query = `
 		DELETE FROM sessions
 		WHERE user_id = $1 AND device_id = $2
+		RETURNING id
 	`
 
-	if _, err := r.db.ExecContext(ctx, query, userID, deviceID); err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	rows, err := r.db.QueryContext(ctx, query, userID, deviceID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	sessionIDs := make([]uuid.UUID, 0, 1)
+	for rows.Next() {
+		var sessionID uuid.UUID
+		if err := rows.Scan(&sessionID); err != nil {
+			return uuid.Nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+		sessionIDs = append(sessionIDs, sessionID)
 	}
 
-	return nil
+	return sessionIDs[0], nil
 }
 
-func (r *SessionRepo) DeleteAll(ctx context.Context, userID uuid.UUID) error {
+func (r *SessionRepo) DeleteAll(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	const query = `
 		DELETE FROM sessions
 		WHERE user_id = $1
+		RETURNING id
 	`
 
-	if _, err := r.db.ExecContext(ctx, query, userID); err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	sessionIDs := make([]uuid.UUID, 0, 1)
+	for rows.Next() {
+		var sessionID uuid.UUID
+		if err := rows.Scan(&sessionID); err != nil {
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+		sessionIDs = append(sessionIDs, sessionID)
 	}
 
-	return nil
+	return sessionIDs, nil
 }

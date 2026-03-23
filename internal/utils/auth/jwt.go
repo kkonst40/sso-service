@@ -30,12 +30,18 @@ type UserClaims struct {
 }
 
 type JWTProvider struct {
-	Cfg *config.Config
+	issuer    string
+	audience  string
+	secretKey string
+	ttl       time.Duration
 }
 
 func NewJWTProvider(cfg *config.Config) *JWTProvider {
 	return &JWTProvider{
-		Cfg: cfg,
+		issuer:    cfg.JWT.Issuer,
+		audience:  cfg.JWT.Audience,
+		secretKey: cfg.JWT.SecretKey,
+		ttl:       time.Duration(cfg.JWT.ExpireDays) * 24 * time.Hour,
 	}
 }
 
@@ -45,10 +51,10 @@ func (p *JWTProvider) Generate(user *model.User, session *model.Session) (string
 		UserName:  user.Login,
 		SessionID: session.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:   p.Cfg.JWT.Issuer,
-			Audience: []string{p.Cfg.JWT.Audience},
+			Issuer:   p.issuer,
+			Audience: []string{p.audience},
 			ExpiresAt: jwt.NewNumericDate(
-				time.Now().Add(time.Duration(p.Cfg.JWT.ExpireDays) * 24 * time.Hour),
+				time.Now().Add(p.ttl),
 			),
 			IssuedAt: jwt.NewNumericDate(time.Now()),
 		},
@@ -56,7 +62,7 @@ func (p *JWTProvider) Generate(user *model.User, session *model.Session) (string
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString([]byte(p.Cfg.JWT.SecretKey))
+	return token.SignedString([]byte(p.secretKey))
 }
 
 func (p *JWTProvider) ValidateToken(tokenString string) (uuid.UUID, error) {
@@ -69,10 +75,10 @@ func (p *JWTProvider) ValidateToken(tokenString string) (uuid.UUID, error) {
 			if token.Method != jwt.SigningMethodHS256 {
 				return nil, jwt.ErrSignatureInvalid
 			}
-			return []byte(p.Cfg.JWT.SecretKey), nil
+			return []byte(p.secretKey), nil
 		},
-		jwt.WithIssuer(p.Cfg.JWT.Issuer),
-		jwt.WithAudience(p.Cfg.JWT.Audience),
+		jwt.WithIssuer(p.issuer),
+		jwt.WithAudience(p.audience),
 	)
 
 	if err != nil {
@@ -84,4 +90,8 @@ func (p *JWTProvider) ValidateToken(tokenString string) (uuid.UUID, error) {
 	}
 
 	return claims.ID, nil
+}
+
+func (p *JWTProvider) GetTTLDays() int {
+	return int(p.ttl.Hours()+1) / 24
 }

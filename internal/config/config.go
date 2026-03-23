@@ -25,6 +25,11 @@ type JWTConfig struct {
 	ExpireDays int    `json:"expireDays"`
 }
 
+type KafkaConfig struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
+}
+
 type CredConfig struct {
 	LoginChars     string `json:"loginChars"`
 	MaxLoginLength int    `json:"maxLoginLength"`
@@ -35,12 +40,13 @@ type CredConfig struct {
 }
 
 type Config struct {
-	Env      string     `json:"env"`
-	RestPort string     `json:"restPort"`
-	GrpcPort string     `json:"grpcPort"`
-	JWT      JWTConfig  `json:"jwt"`
-	DB       DBConfig   `json:"db"`
-	Cred     CredConfig `json:"cred"`
+	Env      string      `json:"env"`
+	RestPort string      `json:"restPort"`
+	GrpcPort string      `json:"grpcPort"`
+	DB       DBConfig    `json:"db"`
+	JWT      JWTConfig   `json:"jwt"`
+	Kafka    KafkaConfig `json:"kafka"`
+	Cred     CredConfig  `json:"cred"`
 }
 
 func Load() (*Config, error) {
@@ -106,6 +112,13 @@ func loadConfigEnv() (*Config, error) {
 		Env:      getEnvString("ENV"),
 		RestPort: getEnvString("REST_PORT"),
 		GrpcPort: getEnvString("GRPC_PORT"),
+		DB: DBConfig{
+			Host:     getEnvString("DB_HOST"),
+			Port:     getEnvString("DB_PORT"),
+			User:     getEnvString("DB_USER"),
+			Password: getEnvString("DB_PASSWORD"),
+			DBName:   getEnvString("DB_NAME"),
+		},
 		JWT: JWTConfig{
 			SecretKey:  getEnvString("JWT_SECRET"),
 			Issuer:     getEnvString("JWT_ISSUER"),
@@ -113,12 +126,9 @@ func loadConfigEnv() (*Config, error) {
 			CookieName: getEnvString("JWT_COOKIE"),
 			ExpireDays: getEnvInt("JWT_EXPIREDAYS"),
 		},
-		DB: DBConfig{
-			Host:     getEnvString("DB_HOST"),
-			Port:     getEnvString("DB_PORT"),
-			User:     getEnvString("DB_USER"),
-			Password: getEnvString("DB_PASSWORD"),
-			DBName:   getEnvString("DB_NAME"),
+		Kafka: KafkaConfig{
+			Host: getEnvString("KAFKA_HOST"),
+			Port: getEnvString("KAFKA_PORT"),
 		},
 		Cred: CredConfig{
 			LoginChars:     getEnvString("CRED_LOGIN_CHARS"),
