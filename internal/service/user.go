@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/isso/internal/errors"
+	"github.com/kkonst40/isso/internal/eventbus"
 	"github.com/kkonst40/isso/internal/model"
 	"github.com/kkonst40/isso/internal/repo"
 	"github.com/kkonst40/isso/internal/utils"
@@ -17,6 +19,7 @@ type UserService struct {
 	jwtProvider   *auth.JWTProvider
 	pwdHandler    *utils.PasswordHandler
 	credValidator *utils.CredValidator
+	eventProducer *eventbus.Producer
 	userRepo      *repo.UserRepo
 	sessionRepo   *repo.SessionRepo
 	specialID     uuid.UUID
@@ -26,6 +29,7 @@ func New(
 	jwtProvider *auth.JWTProvider,
 	pwdHandler *utils.PasswordHandler,
 	credValidator *utils.CredValidator,
+	eventProducer *eventbus.Producer,
 	userRepo *repo.UserRepo,
 	sessionRepo *repo.SessionRepo,
 	specialID uuid.UUID,
@@ -34,6 +38,7 @@ func New(
 		jwtProvider:   jwtProvider,
 		pwdHandler:    pwdHandler,
 		credValidator: credValidator,
+		eventProducer: eventProducer,
 		userRepo:      userRepo,
 		sessionRepo:   sessionRepo,
 		specialID:     specialID,
@@ -149,6 +154,10 @@ func (s *UserService) UpdateLogin(ctx context.Context, ID uuid.UUID, newLogin st
 		return fmt.Errorf("update user %v: %w", ID, err)
 	}
 
+	if err := s.eventProducer.SendLoginUpdate(ctx, user.ID, user.Login); err != nil {
+		log.Println("sending update login event to event queue error: %w", err)
+	}
+
 	return nil
 }
 
@@ -189,18 +198,28 @@ func (s *UserService) Delete(ctx context.Context, ID, requesterID uuid.UUID) err
 }
 
 func (s *UserService) LogoutAll(ctx context.Context, ID uuid.UUID) error {
-	err := s.sessionRepo.DeleteAll(ctx, ID)
+	sessionIDs, err := s.sessionRepo.DeleteAll(ctx, ID)
 	if err != nil {
 		return fmt.Errorf("session delete: %w", err)
+	}
+
+	for _, sessionID := range sessionIDs {
+		if err := s.eventProducer.SendSessionInvalidation(ctx, sessionID, s.jwtProvider.GetTTLDays()); err != nil {
+			log.Println("sending session invalidation event to event queue error: %w", err)
+		}
 	}
 
 	return nil
 }
 
 func (s *UserService) Logout(ctx context.Context, ID, deviceID uuid.UUID) error {
-	err := s.sessionRepo.Delete(ctx, ID, deviceID)
+	sessionID, err := s.sessionRepo.Delete(ctx, ID, deviceID)
 	if err != nil {
 		return fmt.Errorf("session delete: %w", err)
+	}
+
+	if err := s.eventProducer.SendSessionInvalidation(ctx, sessionID, s.jwtProvider.GetTTLDays()); err != nil {
+		log.Println("sending session invalidation event to event queue error: %w", err)
 	}
 
 	return nil
