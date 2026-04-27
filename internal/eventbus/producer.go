@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/isso/internal/config"
+	"github.com/kkonst40/sso-service/internal/config"
 	"github.com/segmentio/kafka-go"
 )
 

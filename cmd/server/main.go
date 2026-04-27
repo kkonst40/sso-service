@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kkonst40/isso/internal/app"
-	"github.com/kkonst40/isso/internal/config"
+	"github.com/kkonst40/sso-service/internal/app"
+	"github.com/kkonst40/sso-service/internal/config"
 )
 
 func main() {

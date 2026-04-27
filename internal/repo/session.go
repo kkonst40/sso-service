@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	errs "github.com/kkonst40/isso/internal/errors"
-	"github.com/kkonst40/isso/internal/model"
+	errs "github.com/kkonst40/sso-service/internal/errors"
+	"github.com/kkonst40/sso-service/internal/model"
 )
 
 type SessionRepo struct {

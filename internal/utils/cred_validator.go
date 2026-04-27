@@ -1,6 +1,6 @@
 package utils
 
-import "github.com/kkonst40/isso/internal/config"
+import "github.com/kkonst40/sso-service/internal/config"
 
 type CredValidator struct {
 	loginChars     map[rune]struct{}

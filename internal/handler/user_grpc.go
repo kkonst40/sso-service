@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	pb "github.com/kkonst40/isso/internal/gen/user"
-	"github.com/kkonst40/isso/internal/service"
+	pb "github.com/kkonst40/sso-service/internal/gen/user"
+	"github.com/kkonst40/sso-service/internal/service"
 )
 
 type UserGRPCHandler struct {

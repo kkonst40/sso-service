@@ -1,4 +1,4 @@
-module github.com/kkonst40/isso
+module github.com/kkonst40/sso-service
 
 go 1.25.5
 
