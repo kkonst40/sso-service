@@ -1,70 +1,52 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
 )
 
 type DBConfig struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	DBName   string `json:"dbname"`
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
 }
 
 type JWTConfig struct {
-	SecretKey  string `json:"secretKey"`
-	Issuer     string `json:"issuer"`
-	Audience   string `json:"audience"`
-	CookieName string `json:"cookieName"`
-	ExpireDays int    `json:"expireDays"`
+	SecretKey  string
+	Issuer     string
+	Audience   string
+	CookieName string
+	ExpireDays int
 }
 
 type KafkaConfig struct {
-	Host string `json:"host"`
-	Port string `json:"port"`
+	Host string
+	Port string
 }
 
 type CredConfig struct {
-	LoginChars     string `json:"loginChars"`
-	MaxLoginLength int    `json:"maxLoginLength"`
-	MinLoginLength int    `json:"minLoginLength"`
-	PwdChars       string `json:"passwordChars"`
-	MaxPwdLength   int    `json:"maxPasswordLength"`
-	MinPwdLength   int    `json:"minPasswordLength"`
+	LoginChars     string
+	MaxLoginLength int
+	MinLoginLength int
+	PwdChars       string
+	MaxPwdLength   int
+	MinPwdLength   int
 }
 
 type Config struct {
-	Env      string      `json:"env"`
-	RestPort string      `json:"restPort"`
-	GrpcPort string      `json:"grpcPort"`
-	DB       DBConfig    `json:"db"`
-	JWT      JWTConfig   `json:"jwt"`
-	Kafka    KafkaConfig `json:"kafka"`
-	Cred     CredConfig  `json:"cred"`
+	Env      string
+	RestPort string
+	GrpcPort string
+	DB       DBConfig
+	JWT      JWTConfig
+	Kafka    KafkaConfig
+	Cred     CredConfig
 }
 
 func Load() (*Config, error) {
-	var cfg *Config
-	var err error
-	switch runtime.GOOS {
-	case "windows":
-		cfg, err = loadConfigJSON()
-	case "linux":
-		cfg, err = loadConfigEnv()
-	default:
-		return nil, fmt.Errorf("config loading error")
-	}
-
-	return cfg, err
-}
-
-func loadConfigEnv() (*Config, error) {
 	var (
 		errMissing error
 		errNotInt  error
@@ -115,9 +97,9 @@ func loadConfigEnv() (*Config, error) {
 		DB: DBConfig{
 			Host:     getEnvString("DB_HOST"),
 			Port:     getEnvString("DB_PORT"),
-			User:     getEnvString("DB_USER"),
-			Password: getEnvString("DB_PASSWORD"),
-			DBName:   getEnvString("DB_NAME"),
+			User:     getEnvString("POSTGRES_USER"),
+			Password: getEnvString("POSTGRES_PASSWORD"),
+			DBName:   getEnvString("POSTGRES_DB"),
 		},
 		JWT: JWTConfig{
 			SecretKey:  getEnvString("JWT_SECRET"),
@@ -157,26 +139,4 @@ func loadConfigEnv() (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func loadConfigJSON() (*Config, error) {
-	exePath, err := os.Executable()
-	if err != nil {
-		return nil, err
-	}
-
-	currDir := filepath.Dir(exePath)
-	file, err := os.Open(filepath.Join(currDir, "config.json"))
-	if err != nil {
-		return nil, fmt.Errorf("json config file oppening error: %v", err)
-	}
-	defer file.Close()
-
-	var cfg Config
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("json config file reading error: %v", err)
-	}
-
-	return &cfg, nil
 }

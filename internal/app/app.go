@@ -59,8 +59,7 @@ func New(cfg *config.Config) (*App, error) {
 		userHandler = handler.New(userService, cfg)
 	)
 
-	apiRouter := http.NewServeMux()
-	pagesRouter := http.NewServeMux()
+	router := http.NewServeMux()
 
 	noAuthStack := middleware.CreateStack(
 		middleware.Recovery,
@@ -73,29 +72,14 @@ func New(cfg *config.Config) (*App, error) {
 		middleware.Auth(jwtProvider, cfg.JWT.CookieName),
 	)
 
-	// for test
-	pagesRouter.HandleFunc("GET /register", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/register.html")
-	})
-	pagesRouter.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/login.html")
-	})
-	pagesRouter.HandleFunc("GET /me", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/me.html")
-	})
+	router.Handle("POST /login", noAuthStack(http.HandlerFunc(userHandler.Login)))
+	router.Handle("POST /register", noAuthStack(http.HandlerFunc(userHandler.Create)))
 
-	apiRouter.Handle("POST /login", noAuthStack(http.HandlerFunc(userHandler.Login)))
-	apiRouter.Handle("POST /register", noAuthStack(http.HandlerFunc(userHandler.Create)))
-
-	apiRouter.Handle("GET /me", authStack(http.HandlerFunc(userHandler.Me)))
-	apiRouter.Handle("POST /logout", authStack(http.HandlerFunc(userHandler.Logout)))
-	apiRouter.Handle("PUT /updatelogin", authStack(http.HandlerFunc(userHandler.UpdateLogin)))
-	apiRouter.Handle("PUT /updatepassword", authStack(http.HandlerFunc(userHandler.UpdatePassword)))
-	apiRouter.Handle("DELETE /{id}", authStack(http.HandlerFunc(userHandler.Delete)))
-
-	router := http.NewServeMux()
-	router.Handle("/api/", http.StripPrefix("/api", apiRouter))
-	router.Handle("/", noAuthStack(pagesRouter))
+	router.Handle("GET /me", authStack(http.HandlerFunc(userHandler.Me)))
+	router.Handle("POST /logout", authStack(http.HandlerFunc(userHandler.Logout)))
+	router.Handle("PUT /updatelogin", authStack(http.HandlerFunc(userHandler.UpdateLogin)))
+	router.Handle("PUT /updatepassword", authStack(http.HandlerFunc(userHandler.UpdatePassword)))
+	router.Handle("DELETE /{id}", authStack(http.HandlerFunc(userHandler.Delete)))
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RestPort,
