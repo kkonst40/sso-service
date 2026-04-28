@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/isso/internal/config"
+	"github.com/kkonst40/sso-service/internal/config"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -26,12 +26,11 @@ func NewProducer(cfg *config.Config) *Producer {
 }
 
 func (p *Producer) SendLoginUpdate(ctx context.Context, userID uuid.UUID, login string) error {
+	payloadBytes, _ := json.Marshal(loginUpdatePayload{UserID: userID, Login: login})
+
 	event := eventMessage{
-		Type: eventTypeLoginUpdate,
-		Payload: loginUpdatePayload{
-			UserID: userID,
-			Login:  login,
-		},
+		Type:      eventTypeLoginUpdate,
+		Payload:   payloadBytes,
 		CreatedAt: time.Now(),
 	}
 
@@ -45,12 +44,11 @@ func (p *Producer) SendLoginUpdate(ctx context.Context, userID uuid.UUID, login 
 }
 
 func (p *Producer) SendSessionInvalidation(ctx context.Context, sessionID uuid.UUID, ttlDays int) error {
+	payloadBytes, _ := json.Marshal(sessionInvalidationPayload{SessionID: sessionID, TTLDays: ttlDays})
+
 	event := eventMessage{
-		Type: eventTypeSessionInvalidation,
-		Payload: sessionInvalidationPayload{
-			SessionID: sessionID,
-			TTLDays:   ttlDays,
-		},
+		Type:      eventTypeSessionInvalidation,
+		Payload:   payloadBytes,
 		CreatedAt: time.Now(),
 	}
 

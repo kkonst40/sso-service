@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/isso/internal/config"
-	"github.com/kkonst40/isso/internal/eventbus"
-	pb "github.com/kkonst40/isso/internal/gen/user"
-	"github.com/kkonst40/isso/internal/handler"
-	"github.com/kkonst40/isso/internal/middleware"
-	"github.com/kkonst40/isso/internal/repo"
-	"github.com/kkonst40/isso/internal/service"
-	"github.com/kkonst40/isso/internal/utils"
-	"github.com/kkonst40/isso/internal/utils/auth"
+	"github.com/kkonst40/sso-service/internal/config"
+	"github.com/kkonst40/sso-service/internal/eventbus"
+	pb "github.com/kkonst40/sso-service/internal/gen/user"
+	"github.com/kkonst40/sso-service/internal/handler"
+	"github.com/kkonst40/sso-service/internal/middleware"
+	"github.com/kkonst40/sso-service/internal/repo"
+	"github.com/kkonst40/sso-service/internal/service"
+	"github.com/kkonst40/sso-service/internal/utils"
+	"github.com/kkonst40/sso-service/internal/utils/auth"
 	"google.golang.org/grpc"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -59,8 +59,7 @@ func New(cfg *config.Config) (*App, error) {
 		userHandler = handler.New(userService, cfg)
 	)
 
-	apiRouter := http.NewServeMux()
-	pagesRouter := http.NewServeMux()
+	router := http.NewServeMux()
 
 	noAuthStack := middleware.CreateStack(
 		middleware.Recovery,
@@ -73,29 +72,14 @@ func New(cfg *config.Config) (*App, error) {
 		middleware.Auth(jwtProvider, cfg.JWT.CookieName),
 	)
 
-	// for test
-	pagesRouter.HandleFunc("GET /register", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/register.html")
-	})
-	pagesRouter.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/login.html")
-	})
-	pagesRouter.HandleFunc("GET /me", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/me.html")
-	})
+	router.Handle("POST /login", noAuthStack(http.HandlerFunc(userHandler.Login)))
+	router.Handle("POST /register", noAuthStack(http.HandlerFunc(userHandler.Create)))
 
-	apiRouter.Handle("POST /login", noAuthStack(http.HandlerFunc(userHandler.Login)))
-	apiRouter.Handle("POST /register", noAuthStack(http.HandlerFunc(userHandler.Create)))
-
-	apiRouter.Handle("GET /me", authStack(http.HandlerFunc(userHandler.Me)))
-	apiRouter.Handle("POST /logout", authStack(http.HandlerFunc(userHandler.Logout)))
-	apiRouter.Handle("PUT /updatelogin", authStack(http.HandlerFunc(userHandler.UpdateLogin)))
-	apiRouter.Handle("PUT /updatepassword", authStack(http.HandlerFunc(userHandler.UpdatePassword)))
-	apiRouter.Handle("DELETE /{id}", authStack(http.HandlerFunc(userHandler.Delete)))
-
-	router := http.NewServeMux()
-	router.Handle("/api/", http.StripPrefix("/api", apiRouter))
-	router.Handle("/", noAuthStack(pagesRouter))
+	router.Handle("GET /me", authStack(http.HandlerFunc(userHandler.Me)))
+	router.Handle("POST /logout", authStack(http.HandlerFunc(userHandler.Logout)))
+	router.Handle("PUT /updatelogin", authStack(http.HandlerFunc(userHandler.UpdateLogin)))
+	router.Handle("PUT /updatepassword", authStack(http.HandlerFunc(userHandler.UpdatePassword)))
+	router.Handle("DELETE /{id}", authStack(http.HandlerFunc(userHandler.Delete)))
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RestPort,

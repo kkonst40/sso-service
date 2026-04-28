@@ -15,7 +15,7 @@ const (
 
 type eventMessage struct {
 	Type      string    `json:"type"`
-	Payload   any       `json:"payload"`
+	Payload   []byte    `json:"payload"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

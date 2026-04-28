@@ -7,12 +7,12 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/isso/internal/errors"
-	"github.com/kkonst40/isso/internal/eventbus"
-	"github.com/kkonst40/isso/internal/model"
-	"github.com/kkonst40/isso/internal/repo"
-	"github.com/kkonst40/isso/internal/utils"
-	"github.com/kkonst40/isso/internal/utils/auth"
+	errs "github.com/kkonst40/sso-service/internal/errors"
+	"github.com/kkonst40/sso-service/internal/eventbus"
+	"github.com/kkonst40/sso-service/internal/model"
+	"github.com/kkonst40/sso-service/internal/repo"
+	"github.com/kkonst40/sso-service/internal/utils"
+	"github.com/kkonst40/sso-service/internal/utils/auth"
 )
 
 type UserService struct {

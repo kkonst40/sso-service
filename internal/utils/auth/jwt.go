@@ -6,8 +6,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/kkonst40/isso/internal/config"
-	"github.com/kkonst40/isso/internal/model"
+	"github.com/kkonst40/sso-service/internal/config"
+	"github.com/kkonst40/sso-service/internal/model"
 )
 
 type ctxKey struct{}
