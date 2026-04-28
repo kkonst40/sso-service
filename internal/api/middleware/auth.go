@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/kkonst40/sso-service/internal/utils/auth"
+	"github.com/kkonst40/sso-service/internal/service/auth"
 )
 
 func Auth(jwtProvider *auth.JWTProvider, cookieName string) Middleware {

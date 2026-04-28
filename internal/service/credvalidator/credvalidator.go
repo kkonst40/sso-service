@@ -1,4 +1,4 @@
-package utils
+package credvalidator
 
 import "github.com/kkonst40/sso-service/internal/config"
 
@@ -11,7 +11,7 @@ type CredValidator struct {
 	minPwdLength   int
 }
 
-func NewValidator(cfg *config.Config) *CredValidator {
+func New(cfg *config.Config) *CredValidator {
 	loginCharsMap := make(map[rune]struct{})
 	pwdCharsMap := make(map[rune]struct{})
 

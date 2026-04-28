@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/sso-service/internal/api/dto"
 	"github.com/kkonst40/sso-service/internal/config"
-	"github.com/kkonst40/sso-service/internal/dto"
 	errs "github.com/kkonst40/sso-service/internal/errors"
 	"github.com/kkonst40/sso-service/internal/service"
-	"github.com/kkonst40/sso-service/internal/utils/auth"
+	"github.com/kkonst40/sso-service/internal/service/auth"
 )
 
 type UserHandler struct {

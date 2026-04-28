@@ -24,7 +24,7 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 	}
 }
 
-func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (*model.User, error) {
+func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (model.User, error) {
 	const query = `
 		SELECT id, login, password_hash
 		FROM users
@@ -39,16 +39,16 @@ func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (*model.User, erro
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.ErrUserNotFound
+		return model.User{}, errs.ErrUserNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return model.User{}, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
-	return &user, nil
+	return user, nil
 }
 
-func (r *UserRepo) GetByLogin(ctx context.Context, login string) (*model.User, error) {
+func (r *UserRepo) GetByLogin(ctx context.Context, login string) (model.User, error) {
 	const query = `
 		SELECT id, login, password_hash
 		FROM users
@@ -63,13 +63,13 @@ func (r *UserRepo) GetByLogin(ctx context.Context, login string) (*model.User, e
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.ErrUserNotFound
+		return model.User{}, errs.ErrUserNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return model.User{}, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (r *UserRepo) GetLoginsByIDs(ctx context.Context, IDs []uuid.UUID) ([]model.UserInfo, error) {

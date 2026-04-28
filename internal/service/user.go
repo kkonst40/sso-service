@@ -11,14 +11,15 @@ import (
 	"github.com/kkonst40/sso-service/internal/eventbus"
 	"github.com/kkonst40/sso-service/internal/model"
 	"github.com/kkonst40/sso-service/internal/repo"
-	"github.com/kkonst40/sso-service/internal/utils"
-	"github.com/kkonst40/sso-service/internal/utils/auth"
+	"github.com/kkonst40/sso-service/internal/service/auth"
+	"github.com/kkonst40/sso-service/internal/service/credvalidator"
+	"github.com/kkonst40/sso-service/internal/service/pwdhasher"
 )
 
 type UserService struct {
 	jwtProvider   *auth.JWTProvider
-	pwdHandler    *utils.PasswordHandler
-	credValidator *utils.CredValidator
+	pwdHasher     *pwdhasher.PasswordHasher
+	credValidator *credvalidator.CredValidator
 	eventProducer *eventbus.Producer
 	userRepo      *repo.UserRepo
 	sessionRepo   *repo.SessionRepo
@@ -27,8 +28,8 @@ type UserService struct {
 
 func New(
 	jwtProvider *auth.JWTProvider,
-	pwdHandler *utils.PasswordHandler,
-	credValidator *utils.CredValidator,
+	pwdHasher *pwdhasher.PasswordHasher,
+	credValidator *credvalidator.CredValidator,
 	eventProducer *eventbus.Producer,
 	userRepo *repo.UserRepo,
 	sessionRepo *repo.SessionRepo,
@@ -36,7 +37,7 @@ func New(
 ) *UserService {
 	return &UserService{
 		jwtProvider:   jwtProvider,
-		pwdHandler:    pwdHandler,
+		pwdHasher:     pwdHasher,
 		credValidator: credValidator,
 		eventProducer: eventProducer,
 		userRepo:      userRepo,
@@ -81,7 +82,7 @@ func (s *UserService) Login(ctx context.Context, login, password string, deviceI
 		return "", fmt.Errorf("get user by login '%v' to log in: %w", login, err)
 	}
 
-	if !s.pwdHandler.VerifyPwd(password, user.PasswordHash) {
+	if !s.pwdHasher.VerifyPwd(password, user.PasswordHash) {
 		return "", errs.ErrInvalidCredentials
 	}
 
@@ -100,7 +101,7 @@ func (s *UserService) Login(ctx context.Context, login, password string, deviceI
 		return "", fmt.Errorf("creating session: %w", err)
 	}
 
-	token, err := s.jwtProvider.Generate(user, session)
+	token, err := s.jwtProvider.Generate(&user, session)
 	if err != nil {
 		return "", fmt.Errorf("%w: jwt token: %w", errs.ErrGenerating, err)
 	}
@@ -120,7 +121,7 @@ func (s *UserService) Create(ctx context.Context, login, password string) error 
 	if err != nil {
 		return fmt.Errorf("%w: user id: %w", errs.ErrGenerating, err)
 	}
-	pwdHash, err := s.pwdHandler.GeneratePwdHash(password)
+	pwdHash, err := s.pwdHasher.GeneratePwdHash(password)
 	if err != nil {
 		return fmt.Errorf("%w: password hash: %w", errs.ErrGenerating, err)
 	}
@@ -150,7 +151,7 @@ func (s *UserService) UpdateLogin(ctx context.Context, ID uuid.UUID, newLogin st
 
 	user.Login = newLogin
 
-	if err := s.userRepo.Update(ctx, user); err != nil {
+	if err := s.userRepo.Update(ctx, &user); err != nil {
 		return fmt.Errorf("update user %v: %w", ID, err)
 	}
 
@@ -171,14 +172,14 @@ func (s *UserService) UpdatePassword(ctx context.Context, ID uuid.UUID, newPwd s
 		return fmt.Errorf("get user %v to update: %w", ID, err)
 	}
 
-	newPwdHash, err := s.pwdHandler.GeneratePwdHash(newPwd)
+	newPwdHash, err := s.pwdHasher.GeneratePwdHash(newPwd)
 	if err != nil {
 		return fmt.Errorf("%w: password hash: %w", errs.ErrGenerating, err)
 	}
 
 	user.PasswordHash = newPwdHash
 
-	if err := s.userRepo.Update(ctx, user); err != nil {
+	if err := s.userRepo.Update(ctx, &user); err != nil {
 		return fmt.Errorf("update user %v: %w", ID, err)
 	}
 

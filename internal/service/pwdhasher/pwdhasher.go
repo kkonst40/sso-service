@@ -1,14 +1,14 @@
-package utils
+package pwdhasher
 
 import "golang.org/x/crypto/bcrypt"
 
-type PasswordHandler struct{}
+type PasswordHasher struct{}
 
-func NewPasswordHandler() *PasswordHandler {
-	return &PasswordHandler{}
+func New() *PasswordHasher {
+	return &PasswordHasher{}
 }
 
-func (h *PasswordHandler) GeneratePwdHash(password string) (string, error) {
+func (h *PasswordHasher) GeneratePwdHash(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword(
 		[]byte(password),
 		bcrypt.DefaultCost,
@@ -19,7 +19,7 @@ func (h *PasswordHandler) GeneratePwdHash(password string) (string, error) {
 	return string(hash), nil
 }
 
-func (h *PasswordHandler) VerifyPwd(password string, passwordHash string) bool {
+func (h *PasswordHasher) VerifyPwd(password string, passwordHash string) bool {
 	err := bcrypt.CompareHashAndPassword(
 		[]byte(passwordHash),
 		[]byte(password),

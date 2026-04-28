@@ -10,15 +10,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/sso-service/internal/api/handler"
+	"github.com/kkonst40/sso-service/internal/api/middleware"
 	"github.com/kkonst40/sso-service/internal/config"
 	"github.com/kkonst40/sso-service/internal/eventbus"
 	pb "github.com/kkonst40/sso-service/internal/gen/user"
-	"github.com/kkonst40/sso-service/internal/handler"
-	"github.com/kkonst40/sso-service/internal/middleware"
 	"github.com/kkonst40/sso-service/internal/repo"
 	"github.com/kkonst40/sso-service/internal/service"
-	"github.com/kkonst40/sso-service/internal/utils"
-	"github.com/kkonst40/sso-service/internal/utils/auth"
+	"github.com/kkonst40/sso-service/internal/service/auth"
+	"github.com/kkonst40/sso-service/internal/service/credvalidator"
+	"github.com/kkonst40/sso-service/internal/service/pwdhasher"
 	"google.golang.org/grpc"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -39,8 +40,8 @@ func New(cfg *config.Config) (*App, error) {
 
 	var (
 		jwtProvider   = auth.NewJWTProvider(cfg)
-		pwdHasher     = utils.NewPasswordHandler()
-		credValidator = utils.NewValidator(cfg)
+		pwdHasher     = pwdhasher.New()
+		credValidator = credvalidator.New(cfg)
 		eventProducer = eventbus.NewProducer(cfg)
 	)
 
