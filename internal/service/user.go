@@ -7,9 +7,9 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/sso-service/internal/errors"
+	errs "github.com/kkonst40/sso-service/internal/domain/errors"
+	"github.com/kkonst40/sso-service/internal/domain/model"
 	"github.com/kkonst40/sso-service/internal/eventbus"
-	"github.com/kkonst40/sso-service/internal/model"
 	"github.com/kkonst40/sso-service/internal/repo"
 	"github.com/kkonst40/sso-service/internal/service/auth"
 	"github.com/kkonst40/sso-service/internal/service/credvalidator"

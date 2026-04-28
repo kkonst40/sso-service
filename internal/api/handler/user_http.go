@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kkonst40/sso-service/internal/api/dto"
 	"github.com/kkonst40/sso-service/internal/config"
-	errs "github.com/kkonst40/sso-service/internal/errors"
+	errs "github.com/kkonst40/sso-service/internal/domain/errors"
 	"github.com/kkonst40/sso-service/internal/service"
 	"github.com/kkonst40/sso-service/internal/service/auth"
 )
