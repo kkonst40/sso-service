@@ -1,4 +1,4 @@
-package repo
+package user
 
 import (
 	"context"
@@ -8,23 +8,22 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	errs "github.com/kkonst40/sso-service/internal/errors"
-	"github.com/kkonst40/sso-service/internal/model"
+	errs "github.com/kkonst40/sso-service/internal/domain/errors"
+	"github.com/kkonst40/sso-service/internal/domain/model"
+	"github.com/kkonst40/sso-service/internal/repo"
 )
 
-type UserRepo struct {
+type Repo struct {
 	db *sql.DB
 }
 
-const uniqueViolationCode = "23505"
-
-func NewUserRepo(db *sql.DB) *UserRepo {
-	return &UserRepo{
+func New(db *sql.DB) *Repo {
+	return &Repo{
 		db: db,
 	}
 }
 
-func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (model.User, error) {
+func (r *Repo) GetByID(ctx context.Context, ID uuid.UUID) (model.User, error) {
 	const query = `
 		SELECT id, login, password_hash
 		FROM users
@@ -48,7 +47,7 @@ func (r *UserRepo) GetByID(ctx context.Context, ID uuid.UUID) (model.User, error
 	return user, nil
 }
 
-func (r *UserRepo) GetByLogin(ctx context.Context, login string) (model.User, error) {
+func (r *Repo) GetByLogin(ctx context.Context, login string) (model.User, error) {
 	const query = `
 		SELECT id, login, password_hash
 		FROM users
@@ -72,7 +71,7 @@ func (r *UserRepo) GetByLogin(ctx context.Context, login string) (model.User, er
 	return user, nil
 }
 
-func (r *UserRepo) GetLoginsByIDs(ctx context.Context, IDs []uuid.UUID) ([]model.UserInfo, error) {
+func (r *Repo) GetLoginsByIDs(ctx context.Context, IDs []uuid.UUID) ([]model.UserInfo, error) {
 	if len(IDs) == 0 {
 		return []model.UserInfo{}, nil
 	}
@@ -105,7 +104,7 @@ func (r *UserRepo) GetLoginsByIDs(ctx context.Context, IDs []uuid.UUID) ([]model
 	return users, nil
 }
 
-func (r *UserRepo) GetIDsByLogins(ctx context.Context, logins []string) ([]model.UserInfo, error) {
+func (r *Repo) GetIDsByLogins(ctx context.Context, logins []string) ([]model.UserInfo, error) {
 	if len(logins) == 0 {
 		return []model.UserInfo{}, nil
 	}
@@ -138,7 +137,7 @@ func (r *UserRepo) GetIDsByLogins(ctx context.Context, logins []string) ([]model
 	return users, nil
 }
 
-func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
+func (r *Repo) Create(ctx context.Context, user *model.User) error {
 	const query = `
 		INSERT INTO users (id, login, password_hash)
 		VALUES ($1, $2, $3)
@@ -155,7 +154,7 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			if pgErr.Code == uniqueViolationCode {
+			if pgErr.Code == repo.UniqueViolationCode {
 				if pgErr.ConstraintName == "users_login" {
 					return errs.ErrLoginExists
 				}
@@ -168,7 +167,7 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 	return nil
 }
 
-func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
+func (r *Repo) Update(ctx context.Context, user *model.User) error {
 	const query = `
 		UPDATE users
 		SET 
@@ -181,7 +180,7 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			if pgErr.Code == uniqueViolationCode {
+			if pgErr.Code == repo.UniqueViolationCode {
 				if pgErr.ConstraintName == "users_login_key" {
 					return fmt.Errorf("%w: login '%s' taken", errs.ErrLoginExists, user.Login)
 				}
@@ -202,7 +201,7 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 	return nil
 }
 
-func (r *UserRepo) Delete(ctx context.Context, ID uuid.UUID) error {
+func (r *Repo) Delete(ctx context.Context, ID uuid.UUID) error {
 	const query = `
 		DELETE FROM users
 		WHERE id = $1
@@ -215,7 +214,7 @@ func (r *UserRepo) Delete(ctx context.Context, ID uuid.UUID) error {
 	return nil
 }
 
-func (r *UserRepo) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, error) {
+func (r *Repo) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, error) {
 	const query = `
 		SELECT id
 		FROM users

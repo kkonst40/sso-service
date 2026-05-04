@@ -1,4 +1,4 @@
-package service
+package user
 
 import (
 	"context"
@@ -9,20 +9,21 @@ import (
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/sso-service/internal/domain/errors"
 	"github.com/kkonst40/sso-service/internal/domain/model"
-	"github.com/kkonst40/sso-service/internal/eventbus"
-	"github.com/kkonst40/sso-service/internal/repo"
+	sessionrepo "github.com/kkonst40/sso-service/internal/repo/session"
+	userrepo "github.com/kkonst40/sso-service/internal/repo/user"
 	"github.com/kkonst40/sso-service/internal/service/auth"
 	"github.com/kkonst40/sso-service/internal/service/credvalidator"
+	"github.com/kkonst40/sso-service/internal/service/eventbus"
 	"github.com/kkonst40/sso-service/internal/service/pwdhasher"
 )
 
-type UserService struct {
+type Service struct {
 	jwtProvider   *auth.JWTProvider
 	pwdHasher     *pwdhasher.PasswordHasher
 	credValidator *credvalidator.CredValidator
 	eventProducer *eventbus.Producer
-	userRepo      *repo.UserRepo
-	sessionRepo   *repo.SessionRepo
+	userRepo      *userrepo.Repo
+	sessionRepo   *sessionrepo.Repo
 	specialID     uuid.UUID
 }
 
@@ -31,11 +32,11 @@ func New(
 	pwdHasher *pwdhasher.PasswordHasher,
 	credValidator *credvalidator.CredValidator,
 	eventProducer *eventbus.Producer,
-	userRepo *repo.UserRepo,
-	sessionRepo *repo.SessionRepo,
+	userRepo *userrepo.Repo,
+	sessionRepo *sessionrepo.Repo,
 	specialID uuid.UUID,
-) *UserService {
-	return &UserService{
+) *Service {
+	return &Service{
 		jwtProvider:   jwtProvider,
 		pwdHasher:     pwdHasher,
 		credValidator: credValidator,
@@ -46,7 +47,7 @@ func New(
 	}
 }
 
-func (s *UserService) GetLoginsByIDs(ctx context.Context, userIDs []uuid.UUID) ([]model.UserInfo, error) {
+func (s *Service) GetLoginsByIDs(ctx context.Context, userIDs []uuid.UUID) ([]model.UserInfo, error) {
 	userInfos, err := s.userRepo.GetLoginsByIDs(ctx, userIDs)
 	if err != nil {
 		return nil, fmt.Errorf("get logins by IDs: %w", err)
@@ -55,7 +56,7 @@ func (s *UserService) GetLoginsByIDs(ctx context.Context, userIDs []uuid.UUID) (
 	return userInfos, nil
 }
 
-func (s *UserService) GetIDsByLogins(ctx context.Context, userLogins []string) ([]model.UserInfo, error) {
+func (s *Service) GetIDsByLogins(ctx context.Context, userLogins []string) ([]model.UserInfo, error) {
 	userInfos, err := s.userRepo.GetIDsByLogins(ctx, userLogins)
 	if err != nil {
 		return nil, fmt.Errorf("get IDs by logins: %w", err)
@@ -64,7 +65,7 @@ func (s *UserService) GetIDsByLogins(ctx context.Context, userLogins []string) (
 	return userInfos, nil
 }
 
-func (s *UserService) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, error) {
+func (s *Service) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, error) {
 	ids, err := s.userRepo.Exist(ctx, IDs)
 	if err != nil {
 		return nil, fmt.Errorf("check users existence: %w", err)
@@ -73,7 +74,7 @@ func (s *UserService) Exist(ctx context.Context, IDs []uuid.UUID) ([]uuid.UUID, 
 	return ids, nil
 }
 
-func (s *UserService) Login(ctx context.Context, login, password string, deviceID uuid.UUID) (string, error) {
+func (s *Service) Login(ctx context.Context, login, password string, deviceID uuid.UUID) (string, error) {
 	user, err := s.userRepo.GetByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
@@ -109,7 +110,7 @@ func (s *UserService) Login(ctx context.Context, login, password string, deviceI
 	return token, nil
 }
 
-func (s *UserService) Create(ctx context.Context, login, password string) error {
+func (s *Service) Create(ctx context.Context, login, password string) error {
 	if !s.credValidator.ValidateLogin(login) {
 		return errs.ErrInvalidLogin
 	}
@@ -139,7 +140,7 @@ func (s *UserService) Create(ctx context.Context, login, password string) error 
 	return nil
 }
 
-func (s *UserService) UpdateLogin(ctx context.Context, ID uuid.UUID, newLogin string) error {
+func (s *Service) UpdateLogin(ctx context.Context, ID uuid.UUID, newLogin string) error {
 	if !s.credValidator.ValidateLogin(newLogin) {
 		return errs.ErrInvalidLogin
 	}
@@ -162,7 +163,7 @@ func (s *UserService) UpdateLogin(ctx context.Context, ID uuid.UUID, newLogin st
 	return nil
 }
 
-func (s *UserService) UpdatePassword(ctx context.Context, ID uuid.UUID, newPwd string) error {
+func (s *Service) UpdatePassword(ctx context.Context, ID uuid.UUID, newPwd string) error {
 	if !s.credValidator.ValidatePwd(newPwd) {
 		return errs.ErrInvalidPwd
 	}
@@ -186,7 +187,7 @@ func (s *UserService) UpdatePassword(ctx context.Context, ID uuid.UUID, newPwd s
 	return nil
 }
 
-func (s *UserService) Delete(ctx context.Context, ID, requesterID uuid.UUID) error {
+func (s *Service) Delete(ctx context.Context, ID, requesterID uuid.UUID) error {
 	if requesterID != ID && requesterID != s.specialID {
 		return errs.ErrForbidden
 	}
@@ -198,7 +199,7 @@ func (s *UserService) Delete(ctx context.Context, ID, requesterID uuid.UUID) err
 	return nil
 }
 
-func (s *UserService) LogoutAll(ctx context.Context, ID uuid.UUID) error {
+func (s *Service) LogoutAll(ctx context.Context, ID uuid.UUID) error {
 	sessionIDs, err := s.sessionRepo.DeleteAll(ctx, ID)
 	if err != nil {
 		return fmt.Errorf("session delete: %w", err)
@@ -213,7 +214,7 @@ func (s *UserService) LogoutAll(ctx context.Context, ID uuid.UUID) error {
 	return nil
 }
 
-func (s *UserService) Logout(ctx context.Context, ID, deviceID uuid.UUID) error {
+func (s *Service) Logout(ctx context.Context, ID, deviceID uuid.UUID) error {
 	sessionID, err := s.sessionRepo.Delete(ctx, ID, deviceID)
 	if err != nil {
 		return fmt.Errorf("session delete: %w", err)

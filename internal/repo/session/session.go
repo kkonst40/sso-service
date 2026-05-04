@@ -1,4 +1,4 @@
-package repo
+package session
 
 import (
 	"context"
@@ -10,19 +10,20 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	errs "github.com/kkonst40/sso-service/internal/domain/errors"
 	"github.com/kkonst40/sso-service/internal/domain/model"
+	"github.com/kkonst40/sso-service/internal/repo"
 )
 
-type SessionRepo struct {
+type Repo struct {
 	db *sql.DB
 }
 
-func NewSessionRepo(db *sql.DB) *SessionRepo {
-	return &SessionRepo{
+func New(db *sql.DB) *Repo {
+	return &Repo{
 		db: db,
 	}
 }
 
-func (r *SessionRepo) Create(ctx context.Context, session *model.Session) error {
+func (r *Repo) Create(ctx context.Context, session *model.Session) error {
 	const query = `
 		INSERT INTO sessions (id, user_id, device_id)
 		VALUES ($1, $2, $3)
@@ -33,7 +34,7 @@ func (r *SessionRepo) Create(ctx context.Context, session *model.Session) error 
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			if pgErr.Code == uniqueViolationCode {
+			if pgErr.Code == repo.UniqueViolationCode {
 				if pgErr.ConstraintName != "sessions_user_device" {
 					return errs.ErrSessionExists
 				}
@@ -46,7 +47,7 @@ func (r *SessionRepo) Create(ctx context.Context, session *model.Session) error 
 	return nil
 }
 
-func (r *SessionRepo) Delete(ctx context.Context, userID, deviceID uuid.UUID) (uuid.UUID, error) {
+func (r *Repo) Delete(ctx context.Context, userID, deviceID uuid.UUID) (uuid.UUID, error) {
 	const query = `
 		DELETE FROM sessions
 		WHERE user_id = $1 AND device_id = $2
@@ -71,7 +72,7 @@ func (r *SessionRepo) Delete(ctx context.Context, userID, deviceID uuid.UUID) (u
 	return sessionIDs[0], nil
 }
 
-func (r *SessionRepo) DeleteAll(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+func (r *Repo) DeleteAll(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	const query = `
 		DELETE FROM sessions
 		WHERE user_id = $1

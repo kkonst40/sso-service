@@ -13,13 +13,14 @@ import (
 	"github.com/kkonst40/sso-service/internal/api/handler"
 	"github.com/kkonst40/sso-service/internal/api/middleware"
 	"github.com/kkonst40/sso-service/internal/config"
-	"github.com/kkonst40/sso-service/internal/eventbus"
 	pb "github.com/kkonst40/sso-service/internal/gen/user"
-	"github.com/kkonst40/sso-service/internal/repo"
-	"github.com/kkonst40/sso-service/internal/service"
+	sessionrepo "github.com/kkonst40/sso-service/internal/repo/session"
+	userrepo "github.com/kkonst40/sso-service/internal/repo/user"
 	"github.com/kkonst40/sso-service/internal/service/auth"
 	"github.com/kkonst40/sso-service/internal/service/credvalidator"
+	"github.com/kkonst40/sso-service/internal/service/eventbus"
 	"github.com/kkonst40/sso-service/internal/service/pwdhasher"
+	userservice "github.com/kkonst40/sso-service/internal/service/user"
 	"google.golang.org/grpc"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -46,9 +47,9 @@ func New(cfg *config.Config) (*App, error) {
 	)
 
 	var (
-		userRepo    = repo.NewUserRepo(db)
-		sessionRepo = repo.NewSessionRepo(db)
-		userService = service.New(
+		userRepo    = userrepo.New(db)
+		sessionRepo = sessionrepo.New(db)
+		userService = userservice.New(
 			jwtProvider,
 			pwdHasher,
 			credValidator,

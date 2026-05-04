@@ -10,16 +10,16 @@ import (
 	"github.com/kkonst40/sso-service/internal/api/dto"
 	"github.com/kkonst40/sso-service/internal/config"
 	errs "github.com/kkonst40/sso-service/internal/domain/errors"
-	"github.com/kkonst40/sso-service/internal/service"
 	"github.com/kkonst40/sso-service/internal/service/auth"
+	userservice "github.com/kkonst40/sso-service/internal/service/user"
 )
 
 type UserHandler struct {
-	userService *service.UserService
+	userService *userservice.Service
 	cfg         *config.Config
 }
 
-func New(userService *service.UserService, cfg *config.Config) *UserHandler {
+func New(userService *userservice.Service, cfg *config.Config) *UserHandler {
 	return &UserHandler{
 		userService: userService,
 		cfg:         cfg,
